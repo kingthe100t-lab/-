@@ -12,7 +12,7 @@ st.markdown("<h1 style='color: #0088ff;'>🛫 SKY-DIRECTOR PRO: FUK Tactical Map
 
 # 📍 これが「真・確定座標」を組み込んだ最新版です
 FUK_SPOTS = [
-    {"name": "大井中央公園エンド", "lat": 33.5969, "lon": 130.4435},
+    {"name": "大井中央公園", "lat": 33.3610, "lon": 130.2632},
     {"name": "1番スポットの丘", "lat": 33.5938, "lon": 130.4508},
     {"name": "西月隈歩道橋", "lat": 33.5682, "lon": 130.4578},
     {"name": "ひこうきの丘", "lat": 33.5752, "lon": 130.4610},
