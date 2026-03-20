@@ -10,18 +10,17 @@ from google import genai
 st.set_page_config(layout="wide", page_title="SKY-DIRECTOR PRO")
 st.markdown("<h1 style='color: #0088ff;'>🛫 SKY-DIRECTOR PRO: FUK Tactical Map</h1>", unsafe_allow_html=True)
 
-# 📍 マスター指定の最新・超高精度スポット座標
+# 📍 これが「真・確定座標」を組み込んだ最新版です
 FUK_SPOTS = [
-    {"name": "大井中央公園エンド", "lat": 33.5961, "lon": 130.4447},
-    {"name": "1番スポットの丘", "lat": 33.5936, "lon": 130.4495},
-    {"name": "西月隈歩道橋", "lat": 33.5684, "lon": 130.4583},
-    {"name": "ひこうきの丘", "lat": 33.5732, "lon": 130.4601},
-    {"name": "春日公園", "lat": 33.5242, "lon": 130.4721},
+    {"name": "大井中央公園エンド", "lat": 33.5969, "lon": 130.4435},
+    {"name": "1番スポットの丘", "lat": 33.5938, "lon": 130.4508},
+    {"name": "西月隈歩道橋", "lat": 33.5682, "lon": 130.4578},
+    {"name": "ひこうきの丘", "lat": 33.5752, "lon": 130.4610},
+    {"name": "春日公園", "lat": 33.5285, "lon": 130.4705},
     {"name": "御笠川ファイナル会合点", "lat": 33.5350, "lon": 130.4680},
-    {"name": "ルミエール付近交差点", "lat": 33.5270, "lon": 130.4442},
-    {"name": "井野山展望台", "lat": 33.5802, "lon": 130.4985}
+    {"name": "ルミエール付近交差点", "lat": 33.5276, "lon": 130.4448},
+    {"name": "井野山展望台", "lat": 33.5875, "lon": 130.5085}
 ]
-
 def create_smooth_path(points, num_points=120):
     lats, lons = [p[0] for p in points], [p[1] for p in points]
     t = np.zeros(len(points))
