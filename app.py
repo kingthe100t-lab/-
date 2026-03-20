@@ -5,7 +5,7 @@ from streamlit_folium import st_folium
 import math
 import numpy as np
 from scipy.interpolate import interp1d
-import google.generativeai as genai
+from google import genai
 
 st.set_page_config(layout="wide", page_title="SKY-DIRECTOR PRO")
 st.markdown("<h1 style='color: #0088ff;'>🛫 SKY-DIRECTOR PRO: FUK Tactical Map</h1>", unsafe_allow_html=True)
@@ -31,7 +31,6 @@ def create_smooth_path(points, num_points=120):
 
 selected_spot_name = st.selectbox("▼ ターゲット・スポット選択", [s["name"] for s in FUK_SPOTS])
 
-# 運用時間 7:00 〜 22:00
 sim_hour = st.slider("▼ タイムライン操作", 7, 22, 12)
 
 if 7 <= sim_hour <= 11:
@@ -59,7 +58,6 @@ with col_map:
         path_coords = create_smooth_path([[33.720, 130.340], [33.660, 130.390], [33.620, 130.425], [rwy16_pos[0], rwy16_pos[1]]], 50)
         AntPath(locations=path_coords, delay=800, weight=6, color="#00f0ff", pulse_color="#ffffff").add_to(m)
     else:
-        # マスターの青色ルート
         rwy_vec = rwy16_pos - rwy34_pos
         faf_pos = rwy34_pos - rwy_vec * 1.8 
         curve_points = [
@@ -90,12 +88,13 @@ with col_tactical:
     if st.button("⚡ ブリーフィングをリクエスト", type="primary", use_container_width=True):
         with st.spinner("ANALYZING..."):
             try:
-                # サーバーのシークレットキーから安全に読み込む
                 api_key = st.secrets["GEMINI_API_KEY"]
-                genai.configure(api_key=api_key)
-                model = genai.GenerativeModel('gemini-1.5-flash')
+                client = genai.Client(api_key=api_key)
                 prompt = f"福岡空港 {selected_spot_name}での空撮助言。時刻{sim_hour}時、風向{wind_dir}°、RWY{current_rwy}。マニアックな戦術を解説せよ。Markdown記号は禁止。"
-                response = model.generate_content(prompt).text
-                st.success(response)
+                response = client.models.generate_content(
+                    model='gemini-2.5-flash',
+                    contents=prompt,
+                )
+                st.success(response.text)
             except Exception as e:
                 st.error(f"🚨 エラー詳細: {e}")
