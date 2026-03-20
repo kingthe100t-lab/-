@@ -97,5 +97,5 @@ with col_tactical:
                 prompt = f"福岡空港 {selected_spot_name}での空撮助言。時刻{sim_hour}時、風向{wind_dir}°、RWY{current_rwy}。マニアックな戦術を解説せよ。Markdown記号は禁止。"
                 response = model.generate_content(prompt).text
                 st.success(response)
-           except Exception as e:
+            except Exception as e:
                 st.error(f"🚨 エラー詳細: {e}")
