@@ -10,15 +10,16 @@ from google import genai
 st.set_page_config(layout="wide", page_title="SKY-DIRECTOR PRO")
 st.markdown("<h1 style='color: #0088ff;'>🛫 SKY-DIRECTOR PRO: FUK Tactical Map</h1>", unsafe_allow_html=True)
 
+# 📍 マスター指定の最新・超高精度スポット座標
 FUK_SPOTS = [
-    {"name": "大井中央公園エンド", "lat": 33.5961, "lon": 130.4447}, # RWY16エンドのフェンス際へ微調整
-    {"name": "1番スポットの丘", "lat": 33.5936, "lon": 130.4495},   # 丘の最前列へ微調整
-    {"name": "西月隈歩道橋", "lat": 33.5684, "lon": 130.4583},     # 国道3号線またぎの歩道橋ド真ん中へ修正
-    {"name": "ひこうきの丘", "lat": 33.5732, "lon": 130.4601},     # 34エンド東側外周の土手へ修正
-    {"name": "春日公園", "lat": 33.5242, "lon": 130.4721},         # 旋回を見上げる公園中央付近へ修正
-    {"name": "御笠川ファイナル会合点", "lat": 33.5350, "lon": 130.4680}, # 進入経路上・川の真上（維持）
-    {"name": "ルミエール付近交差点", "lat": 33.5270, "lon": 130.4442},   # ルミエール春日店そばへ修正
-    {"name": "井野山展望台", "lat": 33.5802, "lon": 130.4985}      # 宇美町の井野山山頂へ大幅修正
+    {"name": "大井中央公園エンド", "lat": 33.5961, "lon": 130.4447},
+    {"name": "1番スポットの丘", "lat": 33.5936, "lon": 130.4495},
+    {"name": "西月隈歩道橋", "lat": 33.5684, "lon": 130.4583},
+    {"name": "ひこうきの丘", "lat": 33.5732, "lon": 130.4601},
+    {"name": "春日公園", "lat": 33.5242, "lon": 130.4721},
+    {"name": "御笠川ファイナル会合点", "lat": 33.5350, "lon": 130.4680},
+    {"name": "ルミエール付近交差点", "lat": 33.5270, "lon": 130.4442},
+    {"name": "井野山展望台", "lat": 33.5802, "lon": 130.4985}
 ]
 
 def create_smooth_path(points, num_points=120):
@@ -51,8 +52,8 @@ col_map, col_tactical = st.columns([2, 1.2])
 with col_map:
     m = folium.Map(location=[33.560, 130.410], zoom_start=12, tiles="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", attr="Esri")
     
-    rwy16_pos = np.array([33.5969, 130.4432])
-    rwy34_pos = np.array([33.5750, 130.4582])
+    rwy16_pos = np.array([33.5955, 130.4439])
+    rwy34_pos = np.array([33.5715, 130.4553])
     
     if current_rwy == "16":
         path_coords = create_smooth_path([[33.720, 130.340], [33.660, 130.390], [33.620, 130.425], [rwy16_pos[0], rwy16_pos[1]]], 50)
