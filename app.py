@@ -9,7 +9,6 @@ from google import genai
 import pandas as pd
 
 st.set_page_config(layout="wide", page_title="SKY-DIRECTOR PRO")
-# ▼ 変更: タイトルをシンプルにしました
 st.markdown("<h1 style='color: #0088ff;'>🛫 SKY-DIRECTOR PRO</h1>", unsafe_allow_html=True)
 
 @st.cache_data
@@ -51,7 +50,6 @@ if filter_rwy != "すべて":
 else:
     filtered_df = df_spots
 
-# ▼ 削除: 「展開中のスポット数: 100件」のバナーを削除しました
 selected_spot_name = st.selectbox("▼ ターゲット・スポット選択", filtered_df['スポット'].tolist())
 spot_data = filtered_df[filtered_df['スポット'] == selected_spot_name].iloc[0]
 
@@ -88,22 +86,38 @@ with col_map:
         AntPath(locations=path_coords, delay=800, weight=6, color="#0088ff", pulse_color="#ffffff").add_to(m)
         folium.CircleMarker([faf_pos[0], faf_pos[1]], radius=6, color="#00ff00", fill=True, tooltip="御笠川 ファイナル合流点").add_to(m)
 
-    # ▼ 追加：【太陽の位置】を計算してマップに配置
-    airport_center = [33.585, 130.445]
-    # タイムライン(時刻)から太陽の角度を計算（6時=東、12時=南、18時=西）
-    sun_angle_deg = 90 + (sim_hour - 6) * 15
+    # 🎯 選択されたスポットの座標を取得
+    spot_lat = float(spot_data['緯度'])
+    spot_lon = float(spot_data['経度'])
+
+    # ▼ 修正：【太陽の位置】を選択したスポットを中心に再計算！
+    sun_angle_deg = 90 + (sim_hour - 6) * 15 # 6時=東(90度), 12時=南(180度), 18時=西(270度)
     sun_angle_rad = math.radians(sun_angle_deg)
-    r = 0.04 # 空港中心からの距離
-    sun_lat = airport_center[0] - r * math.cos(sun_angle_rad)
-    sun_lon = airport_center[1] + r * math.sin(sun_angle_rad)
+    r_sun = 0.012 # 画面に収まりやすい距離（約1.2km）
     
+    # 正しい方位計算（上が北、右が東）
+    sun_lat = spot_lat + r_sun * math.cos(sun_angle_rad)
+    sun_lon = spot_lon + r_sun * math.sin(sun_angle_rad)
+    
+    # 太陽のアイコン
     folium.Marker(
         [sun_lat, sun_lon],
         tooltip=f"☀️ 太陽の方向 ({sim_hour}:00)",
         icon=folium.DivIcon(html='<div style="font-size: 35px; text-shadow: 0 0 10px #FFD700;">☀️</div>')
     ).add_to(m)
 
-    # ▼ 追加：【風向き】を空港中心に配置（矢印は風が吹いていく方向）
+    # 太陽からスポットへの光のライン（点線）
+    folium.PolyLine(
+        locations=[[spot_lat, spot_lon], [sun_lat, sun_lon]],
+        color="#FFD700",
+        weight=3,
+        dash_array="5, 5",
+        opacity=0.6,
+        tooltip="光の向き"
+    ).add_to(m)
+
+    # ▼ 【風向き】を空港中心に配置
+    airport_center = [33.585, 130.445]
     wind_html = f'<div style="font-size: 35px; color: #00f0ff; text-shadow: 2px 2px 4px #000; transform: rotate({wind_dir}deg); transform-origin: center;">⬇</div>'
     folium.Marker(
         airport_center,
@@ -125,8 +139,8 @@ with col_map:
 
 with col_tactical:
     st.markdown(f"### 🌐 拡大サテライト: {spot_data['スポット']}")
-    ms = folium.Map(location=[spot_data['緯度'], spot_data['経度']], zoom_start=18, tiles="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", attr="Esri", control_scale=True)
-    folium.Marker([spot_data['緯度'], spot_data['経度']], icon=folium.Icon(color="green", icon="camera", prefix="fa")).add_to(ms)
+    ms = folium.Map(location=[spot_lat, spot_lon], zoom_start=18, tiles="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", attr="Esri", control_scale=True)
+    folium.Marker([spot_lat, spot_lon], icon=folium.Icon(color="green", icon="camera", prefix="fa")).add_to(ms)
     st_folium(ms, use_container_width=True, height=250)
     
     st.success(f"**📝 特徴:** {spot_data['特徴']}  \n**🕒 ベスト:** {spot_data['ベスト時間']}  \n**📷 焦点距離:** {spot_data['焦点距離']}")
