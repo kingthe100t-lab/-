@@ -158,4 +158,6 @@ with col_map:
         locations=[[spot_lat, spot_lon], airport_center],
         color="#00FF00",
         weight=3,
-        dash_array="
+        dash_array="5, 8",
+        tooltip="カメラの視線（アングル）"
+    ).add_to(m)
