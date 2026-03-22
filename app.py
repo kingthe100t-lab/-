@@ -110,4 +110,121 @@ with col_map:
         path_coords = create_smooth_path([[33.720, 130.340], [33.660, 130.390], [33.620, 130.425], [rwy16_pos[0], rwy16_pos[1]]], 50)
         AntPath(locations=path_coords, delay=800, weight=6, color="#00f0ff", pulse_color="#ffffff", tooltip="RWY16 アプローチ・ルート").add_to(m)
     else:
-        # ▼ 修正：マスター指定
+        faf_pos = [33.54419313430536, 130.48035280288278]
+        curve_points = [
+            [33.6800, 130.3000], [33.6200, 130.3500], [33.5700, 130.3950], 
+            [33.5400, 130.4150], [33.5180, 130.4400], [33.5250, 130.4650], 
+            faf_pos
+        ]
+        path_coords = create_smooth_path(curve_points, 120) + [faf_pos, [rwy34_pos[0], rwy34_pos[1]]]
+        
+        AntPath(locations=path_coords, delay=800, weight=6, color="#0088ff", pulse_color="#ffffff", tooltip="RWY34 アプローチ・ルート").add_to(m)
+        folium.CircleMarker(faf_pos, radius=6, color="#00ff00", fill=True, tooltip="ファイナル合流点").add_to(m)
+
+    # 太陽の計算
+    sun_azimuth = 180 + (sim_hour - 12) * 15
+    sun_azimuth_rad = math.radians(sun_azimuth)
+    plane_pos = [st.session_state.plane_lat, st.session_state.plane_lon]
+
+    # 空の彼方から飛行機へ降り注ぐ「光の束」
+    r_sun_far = 0.15 
+    sun_lat_far = plane_pos[0] - r_sun_far * math.cos(sun_azimuth_rad)
+    sun_lon_far = plane_pos[1] - r_sun_far * math.sin(sun_azimuth_rad)
+    
+    AntPath(
+        locations=[[sun_lat_far, sun_lon_far], plane_pos],
+        color="#FFD700",
+        weight=20, 
+        opacity=0.4, 
+        dash_array="50, 100", 
+        delay=1500, 
+        pulse_color="#FFFFFF",
+        tooltip="太陽光の向き"
+    ).add_to(m)
+
+    # 被写体（飛行機）の配置
+    plane_angle = st.session_state.plane_heading
+    plane_svg = f"""
+    <svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="transform: rotate({sun_azimuth}deg); transform-origin: center;">
+        <defs>
+            <radialGradient id="sunlightGlow" cx="50%" cy="50%" r="50%" fx="50%" fy="50%">
+                <stop offset="0%" style="stop-color:#FFD700;stop-opacity:0.8" />
+                <stop offset="100%" style="stop-color:#FFD700;stop-opacity:0" />
+            </radialGradient>
+        </defs>
+        <path d="M 50,50 L 30,0 A 50,50 0 0 1 70,0 Z" fill="url(#sunlightGlow)" transform="translate(0, -10)" />
+        <text x="50" y="65" font-size="50" text-anchor="middle" style="transform: rotate({plane_angle - sun_azimuth}deg); transform-origin: 50px 50px; text-shadow: 2px 2px 8px #000;">✈️</text>
+    </svg>
+    """
+    
+    folium.Marker(
+        plane_pos,
+        tooltip="ターゲット被写体（タッチで移動可能）",
+        icon=folium.DivIcon(
+            icon_size=(100, 100),
+            icon_anchor=(50, 50), 
+            html=plane_svg
+        )
+    ).add_to(m)
+
+    # カメラの視線
+    spot_lat = float(spot_data['緯度'])
+    spot_lon = float(spot_data['経度'])
+    
+    folium.PolyLine(
+        locations=[[spot_lat, spot_lon], plane_pos],
+        color="#00FF00",
+        weight=3,
+        dash_array="5, 8",
+        tooltip="カメラの視線（アングル）"
+    ).add_to(m)
+
+    # 100スポットを地図上にプロット
+    for idx, row in filtered_df.iterrows():
+        is_selected = (row["スポット"] == st.session_state.selected_spot)
+        color = "green" if is_selected else "red"
+        folium.Marker(
+            [float(row["緯度"]), float(row["経度"])], 
+            tooltip=row['スポット'], 
+            icon=folium.Icon(color=color, icon="camera", prefix="fa")
+        ).add_to(m)
+
+    # マップのイベントを監視
+    map_data = st_folium(m, use_container_width=True, height=600, key="main_map")
+    
+    if map_data:
+        clicked_tooltip = map_data.get("last_object_clicked_tooltip")
+        if clicked_tooltip and clicked_tooltip in filtered_df["スポット"].values:
+            if clicked_tooltip != st.session_state.selected_spot:
+                st.session_state.selected_spot = clicked_tooltip
+                st.rerun() 
+        
+        clicked_bg = map_data.get("last_clicked")
+        if clicked_bg and clicked_bg != st.session_state.processed_click:
+            st.session_state.processed_click = clicked_bg
+            st.session_state.plane_lat = clicked_bg["lat"]
+            st.session_state.plane_lon = clicked_bg["lng"]
+            st.rerun()
+
+with col_tactical:
+    st.markdown(f"### 🌐 選択中: {spot_data['スポット']}")
+    ms = folium.Map(location=[spot_lat, spot_lon], zoom_start=18, tiles="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", attr="Esri", control_scale=True)
+    folium.Marker([spot_lat, spot_lon], icon=folium.Icon(color="green", icon="camera", prefix="fa")).add_to(ms)
+    st_folium(ms, use_container_width=True, height=250, key="sub_map")
+    
+    st.success(f"**📝 特徴:** {spot_data['特徴']}  \n**🕒 ベスト:** {spot_data['ベスト時間']}  \n**📷 焦点距離:** {spot_data['焦点距離']}")
+    
+    st.markdown("### 🤖 TACTICAL A.I.")
+    if st.button("⚡ ブリーフィングをリクエスト", type="primary", use_container_width=True):
+        with st.spinner("ANALYZING..."):
+            try:
+                api_key = st.secrets["GEMINI_API_KEY"]
+                client = genai.Client(api_key=api_key)
+                prompt = f"福岡空港の撮影スポット「{spot_data['スポット']}」での空撮助言。現在時刻は{sim_hour}時。被写体の飛行機は現在地から見て機首を{st.session_state.plane_heading}度に向けています。この場所の特徴は「{spot_data['特徴']}」、マスターの持参する推奨焦点距離は「{spot_data['焦点距離']}」です。この機材と環境を活かしたマニアックな撮影戦術を解説せよ。Markdown記号は禁止。"
+                response = client.models.generate_content(
+                    model='gemini-2.5-flash',
+                    contents=prompt,
+                )
+                st.info(response.text)
+            except Exception as e:
+                st.error(f"🚨 エラー詳細: {e}")
