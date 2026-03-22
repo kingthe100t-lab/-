@@ -15,7 +15,11 @@ st.markdown("<h1 style='color: #0088ff;'>🛫 SKY-DIRECTOR PRO: 100 Spots Editio
 @st.cache_data
 def load_data():
     df = pd.read_csv("spots.csv")
-    df = df.dropna(subset=["緯度", "経度"]) # ← 追加：緯度経度が空っぽのゴミ・空行を完全排除！
+    # ▼ 追加：緯度・経度の列にある「見えないゴミ」を強制的に破壊（NaN化）！
+    df["緯度"] = pd.to_numeric(df["緯度"], errors="coerce")
+    df["経度"] = pd.to_numeric(df["経度"], errors="coerce")
+    # ゴミが破壊されて空っぽになった行を完全に消去
+    df = df.dropna(subset=["緯度", "経度"])
     return df
 try:
     df_spots = load_data()
