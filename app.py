@@ -8,19 +8,18 @@ from scipy.interpolate import interp1d
 from google import genai
 import pandas as pd
 
-st.set_page_config(layout="wide", page_title="SKY-DIRECTOR PRO V2")
-st.markdown("<h1 style='color: #0088ff;'>🛫 SKY-DIRECTOR PRO: 100 Spots Edition</h1>", unsafe_allow_html=True)
+st.set_page_config(layout="wide", page_title="SKY-DIRECTOR PRO")
+# ▼ 変更: タイトルをシンプルにしました
+st.markdown("<h1 style='color: #0088ff;'>🛫 SKY-DIRECTOR PRO</h1>", unsafe_allow_html=True)
 
-# 📂 100か所の極秘データベースを読み込み
 @st.cache_data
 def load_data():
     df = pd.read_csv("spots.csv")
-    # ▼ 追加：緯度・経度の列にある「見えないゴミ」を強制的に破壊（NaN化）！
     df["緯度"] = pd.to_numeric(df["緯度"], errors="coerce")
     df["経度"] = pd.to_numeric(df["経度"], errors="coerce")
-    # ゴミが破壊されて空っぽになった行を完全に消去
     df = df.dropna(subset=["緯度", "経度"])
     return df
+
 try:
     df_spots = load_data()
 except FileNotFoundError:
@@ -48,12 +47,11 @@ st.markdown("### 🎯 ターゲット・フィルター")
 filter_rwy = st.radio("運用滑走路でスポットを絞り込み", ["すべて", "16", "34"], horizontal=True)
 
 if filter_rwy != "すべて":
-    # 16/34 の両対応スポットも拾うための処理
     filtered_df = df_spots[df_spots['RWY'].str.contains(filter_rwy, na=False)]
 else:
     filtered_df = df_spots
-st.info(f"📍 現在マップに展開中のスポット数: {len(filtered_df)} 件")
-# 絞り込まれたリストからスポットを選択
+
+# ▼ 削除: 「展開中のスポット数: 100件」のバナーを削除しました
 selected_spot_name = st.selectbox("▼ ターゲット・スポット選択", filtered_df['スポット'].tolist())
 spot_data = filtered_df[filtered_df['スポット'] == selected_spot_name].iloc[0]
 
@@ -90,11 +88,33 @@ with col_map:
         AntPath(locations=path_coords, delay=800, weight=6, color="#0088ff", pulse_color="#ffffff").add_to(m)
         folium.CircleMarker([faf_pos[0], faf_pos[1]], radius=6, color="#00ff00", fill=True, tooltip="御笠川 ファイナル合流点").add_to(m)
 
- # 100スポットを地図上にプロット
+    # ▼ 追加：【太陽の位置】を計算してマップに配置
+    airport_center = [33.585, 130.445]
+    # タイムライン(時刻)から太陽の角度を計算（6時=東、12時=南、18時=西）
+    sun_angle_deg = 90 + (sim_hour - 6) * 15
+    sun_angle_rad = math.radians(sun_angle_deg)
+    r = 0.04 # 空港中心からの距離
+    sun_lat = airport_center[0] - r * math.cos(sun_angle_rad)
+    sun_lon = airport_center[1] + r * math.sin(sun_angle_rad)
+    
+    folium.Marker(
+        [sun_lat, sun_lon],
+        tooltip=f"☀️ 太陽の方向 ({sim_hour}:00)",
+        icon=folium.DivIcon(html='<div style="font-size: 35px; text-shadow: 0 0 10px #FFD700;">☀️</div>')
+    ).add_to(m)
+
+    # ▼ 追加：【風向き】を空港中心に配置（矢印は風が吹いていく方向）
+    wind_html = f'<div style="font-size: 35px; color: #00f0ff; text-shadow: 2px 2px 4px #000; transform: rotate({wind_dir}deg); transform-origin: center;">⬇</div>'
+    folium.Marker(
+        airport_center,
+        tooltip=f"💨 風向き: {wind_dir}° ({wind_speed}kt)",
+        icon=folium.DivIcon(html=wind_html)
+    ).add_to(m)
+
+    # 100スポットを地図上にプロット
     for idx, row in filtered_df.iterrows():
         is_selected = (row["スポット"] == selected_spot_name)
         color = "green" if is_selected else "red"
-        # ▼ 修正：邪魔な数字（No）の表記を完全に消去しました！
         folium.Marker(
             [float(row["緯度"]), float(row["経度"])], 
             tooltip=f"{row['スポット']} ({row['特徴']})", 
@@ -109,7 +129,6 @@ with col_tactical:
     folium.Marker([spot_data['緯度'], spot_data['経度']], icon=folium.Icon(color="green", icon="camera", prefix="fa")).add_to(ms)
     st_folium(ms, use_container_width=True, height=250)
     
-    # マスターのデータをダッシュボードに表示！
     st.success(f"**📝 特徴:** {spot_data['特徴']}  \n**🕒 ベスト:** {spot_data['ベスト時間']}  \n**📷 焦点距離:** {spot_data['焦点距離']}")
     
     st.markdown("### 🤖 TACTICAL A.I.")
@@ -118,10 +137,7 @@ with col_tactical:
             try:
                 api_key = st.secrets["GEMINI_API_KEY"]
                 client = genai.Client(api_key=api_key)
-                
-                # AIプロンプトにマスターのデータを注入！
                 prompt = f"福岡空港の撮影スポット「{spot_data['スポット']}」での空撮助言。現在時刻は{sim_hour}時、風向{wind_dir}°、RWY{current_rwy}で運用中。この場所の特徴は「{spot_data['特徴']}」、マスターの持参する推奨焦点距離は「{spot_data['焦点距離']}」です。この機材と環境を活かしたマニアックな撮影戦術を解説せよ。Markdown記号は禁止。"
-                
                 response = client.models.generate_content(
                     model='gemini-2.5-flash',
                     contents=prompt,
