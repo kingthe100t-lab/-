@@ -25,6 +25,10 @@ except FileNotFoundError:
     st.error("🚨 エラー: GitHubに `spots.csv` がアップロードされていません！")
     st.stop()
 
+# --- セッション状態の初期化（タッチ操作用） ---
+if "selected_spot" not in st.session_state:
+    st.session_state.selected_spot = df_spots.iloc[0]["スポット"]
+
 # --- 気象・タイムライン・運用滑走路のシミュレート ---
 sim_hour = st.slider("▼ タイムライン操作", 7, 22, 12)
 
@@ -42,23 +46,29 @@ c3.metric("運用滑走路", f"RWY {current_rwy}")
 c4.metric("時刻", f"{sim_hour}:00")
 
 # --- 🎯 ターゲット・フィルター機能 ---
-st.markdown("### 🎯 ターゲット・フィルター")
-filter_rwy = st.radio("運用滑走路でスポットを絞り込み", ["すべて", "16", "34"], horizontal=True)
+filter_rwy = st.radio("🎯 運用滑走路でスポットを絞り込み", ["すべて", "16", "34"], horizontal=True)
 
 if filter_rwy != "すべて":
     filtered_df = df_spots[df_spots['RWY'].str.contains(filter_rwy, na=False)]
 else:
     filtered_df = df_spots
 
-selected_spot_name = st.selectbox("▼ ターゲット・スポット選択", filtered_df['スポット'].tolist())
-spot_data = filtered_df[filtered_df['スポット'] == selected_spot_name].iloc[0]
+# もしフィルターで現在の選択スポットが消えたら、リストの一番上に切り替える
+if st.session_state.selected_spot not in filtered_df["スポット"].values:
+    st.session_state.selected_spot = filtered_df.iloc[0]["スポット"]
+
+spot_data = filtered_df[filtered_df['スポット'] == st.session_state.selected_spot].iloc[0]
+
+# プルダウンを廃止し、操作案内を表示
+st.info("👆 **地図上の赤いピンをタッチ（クリック）すると、そのスポットの戦術情報に切り替わります。**")
 
 col_map, col_tactical = st.columns([2, 1.2])
 
 with col_map:
     # 全体マップの生成
-    m = folium.Map(location=[33.580, 130.430], zoom_start=12, tiles="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", attr="Esri")
+    m = folium.Map(location=[33.585, 130.445], zoom_start=12, tiles="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", attr="Esri")
     
+    airport_center = [33.585, 130.445] # 撮影ターゲット（被写体）の中心
     rwy16_pos = np.array([33.5955, 130.4439])
     rwy34_pos = np.array([33.5715, 130.4553])
     
@@ -84,68 +94,79 @@ with col_map:
         ]
         path_coords = create_smooth_path(curve_points, 120) + [[faf_pos[0], faf_pos[1]], [rwy34_pos[0], rwy34_pos[1]]]
         AntPath(locations=path_coords, delay=800, weight=6, color="#0088ff", pulse_color="#ffffff").add_to(m)
-        folium.CircleMarker([faf_pos[0], faf_pos[1]], radius=6, color="#00ff00", fill=True, tooltip="御笠川 ファイナル合流点").add_to(m)
 
-    # 🎯 選択されたスポットの座標を取得
-    spot_lat = float(spot_data['緯度'])
-    spot_lon = float(spot_data['経度'])
-
-    # ▼ 新規：【洗練された光線ビジュアル】をSVGで生成
-    # 太陽の方位角を計算（日本の昼12時は南(180度)）
-    # 北=0, 東=90, 南=180, 西=270
-    sun_azimuth = 180 + (sim_hour - 12) * 15
-    
-    # 選択スポットを中心に配置するSVGグラフィック（回転する光の扇形）
-    # 中心から外側に向かって透明になる金色のグラデーション
-    sunlight_svg = f"""
-    <svg width="200" height="200" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="transform: rotate({sun_azimuth}deg); transform-origin: center;">
-        <defs>
-            <radialGradient id="sunlightGradient" cx="50%" cy="50%" r="50%" fx="50%" fy="50%">
-                <stop offset="0%" style="stop-color:#FFD700;stop-opacity:0.8" />
-                <stop offset="100%" style="stop-color:#FFD700;stop-opacity:0" />
-            </radialGradient>
-        </defs>
-        <path d="M 50,50 L 37,1.5 A 50,50 0 0 1 63,1.5 Z" fill="url(#sunlightGradient)" />
-    </svg>
-    """
-    
-    # SVGをDivIconとして配置
-    folium.Marker(
-        [spot_lat, spot_lon],
-        tooltip=f"☀️ 光の方向 ({sim_hour}:00)",
-        icon=folium.DivIcon(
-            icon_size=(200, 200),
-            icon_anchor=(100, 100), # スポット座標に中心を合わせる
-            html=sunlight_svg
-        )
-    ).add_to(m)
-
-    # ▼ 【風向き】を空港中心に配置
-    airport_center = [33.585, 130.445]
-    wind_html = f'<div style="font-size: 35px; color: #00f0ff; text-shadow: 2px 2px 4px #000; transform: rotate({wind_dir}deg); transform-origin: center;">⬇</div>'
+    # ▼ 新規：ジオラマ光線シミュレーター
+    # 1. 被写体（飛行機）の配置
+    plane_angle = 160 if current_rwy == "16" else 340 # 運用RWYに合わせて機体の向きを変える
+    plane_html = f'<div style="font-size: 35px; transform: rotate({plane_angle}deg); text-shadow: 2px 2px 5px #000;">✈️</div>'
     folium.Marker(
         airport_center,
-        tooltip=f"💨 風向き: {wind_dir}° ({wind_speed}kt)",
-        icon=folium.DivIcon(html=wind_html)
+        tooltip="被写体（アプローチ機）",
+        icon=folium.DivIcon(html=plane_html, icon_anchor=(17, 17))
     ).add_to(m)
 
-    # 100スポットを地図上にプロット
+    # 2. 太陽の配置
+    sun_azimuth = 90 + (sim_hour - 6) * 15 # 方位角 (6時=90度(東), 12時=180度(南), 18時=270度(西))
+    sun_azimuth_rad = math.radians(sun_azimuth)
+    r_sun = 0.05 # 中心からの距離
+    sun_lat = airport_center[0] + r_sun * math.cos(sun_azimuth_rad)
+    sun_lon = airport_center[1] + r_sun * math.sin(sun_azimuth_rad)
+    
+    folium.Marker(
+        [sun_lat, sun_lon],
+        tooltip=f"太陽 ({sim_hour}:00)",
+        icon=folium.DivIcon(html='<div style="font-size: 35px; text-shadow: 0 0 15px #FFD700;">☀️</div>', icon_anchor=(17, 17))
+    ).add_to(m)
+
+    # 3. 太陽から被写体へ降り注ぐ「光の束（アニメーション）」
+    AntPath(
+        locations=[[sun_lat, sun_lon], airport_center],
+        color="#FFD700",
+        weight=8,
+        opacity=0.6,
+        dash_array=[10, 15],
+        delay=1000,
+        pulse_color="#FFFFFF",
+        tooltip="太陽光の向き"
+    ).add_to(m)
+
+    # 4. カメラの視線（現在選択しているスポットから被写体へ）
+    spot_lat = float(spot_data['緯度'])
+    spot_lon = float(spot_data['経度'])
+    folium.PolyLine(
+        locations=[[spot_lat, spot_lon], airport_center],
+        color="#00FF00",
+        weight=3,
+        dash_array="5, 8",
+        tooltip="カメラの視線（アングル）"
+    ).add_to(m)
+
+    # 100スポットを地図上にプロット（タッチ対応）
     for idx, row in filtered_df.iterrows():
-        is_selected = (row["スポット"] == selected_spot_name)
+        is_selected = (row["スポット"] == st.session_state.selected_spot)
         color = "green" if is_selected else "red"
         folium.Marker(
             [float(row["緯度"]), float(row["経度"])], 
-            tooltip=f"{row['スポット']} ({row['特徴']})", 
+            tooltip=row['スポット'], # タッチで名前を取得するためにシンプル化
             icon=folium.Icon(color=color, icon="camera", prefix="fa")
         ).add_to(m)
 
-    st_folium(m, use_container_width=True, height=600)
+    # ▼ ここで地図のタッチ（クリック）イベントを受け取る！
+    map_data = st_folium(m, use_container_width=True, height=600, key="main_map")
+    
+    # ピンがタッチされたら、画面を再描画してスポットを切り替える
+    if map_data and map_data.get("last_object_clicked_tooltip"):
+        clicked_tooltip = map_data["last_object_clicked_tooltip"]
+        if clicked_tooltip in filtered_df["スポット"].values:
+            if clicked_tooltip != st.session_state.selected_spot:
+                st.session_state.selected_spot = clicked_tooltip
+                st.rerun() # 瞬時に画面を更新！
 
 with col_tactical:
-    st.markdown(f"### 🌐 拡大サテライト: {spot_data['スポット']}")
+    st.markdown(f"### 🌐 選択中: {spot_data['スポット']}")
     ms = folium.Map(location=[spot_lat, spot_lon], zoom_start=18, tiles="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", attr="Esri", control_scale=True)
     folium.Marker([spot_lat, spot_lon], icon=folium.Icon(color="green", icon="camera", prefix="fa")).add_to(ms)
-    st_folium(ms, use_container_width=True, height=250)
+    st_folium(ms, use_container_width=True, height=250, key="sub_map")
     
     st.success(f"**📝 特徴:** {spot_data['特徴']}  \n**🕒 ベスト:** {spot_data['ベスト時間']}  \n**📷 焦点距離:** {spot_data['焦点距離']}")
     
