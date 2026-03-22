@@ -14,8 +14,9 @@ st.markdown("<h1 style='color: #0088ff;'>🛫 SKY-DIRECTOR PRO: 100 Spots Editio
 # 📂 100か所の極秘データベースを読み込み
 @st.cache_data
 def load_data():
-    return pd.read_csv("spots.csv")
-
+    df = pd.read_csv("spots.csv")
+    df = df.dropna(subset=["緯度", "経度"]) # ← 追加：緯度経度が空っぽのゴミ・空行を完全排除！
+    return df
 try:
     df_spots = load_data()
 except FileNotFoundError:
@@ -85,13 +86,13 @@ with col_map:
         AntPath(locations=path_coords, delay=800, weight=6, color="#0088ff", pulse_color="#ffffff").add_to(m)
         folium.CircleMarker([faf_pos[0], faf_pos[1]], radius=6, color="#00ff00", fill=True, tooltip="御笠川 ファイナル合流点").add_to(m)
 
-    # 100スポットを地図上にプロット
+  # 100スポットを地図上にプロット
     for idx, row in filtered_df.iterrows():
         is_selected = (row["スポット"] == selected_spot_name)
         color = "green" if is_selected else "red"
         # マップのピンにマウスを乗せると特徴が出る仕様！
         folium.Marker(
-            [row["緯度"], row["経度"]], 
+            [float(row["緯度"]), float(row["経度"])], # ← ココを書き換えました！
             tooltip=f"{row['No']}: {row['スポット']} ({row['特徴']})", 
             icon=folium.Icon(color=color, icon="camera", prefix="fa")
         ).add_to(m)
