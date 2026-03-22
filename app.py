@@ -52,7 +52,7 @@ if filter_rwy != "すべて":
     filtered_df = df_spots[df_spots['RWY'].str.contains(filter_rwy, na=False)]
 else:
     filtered_df = df_spots
-
+st.info(f"📍 現在マップに展開中のスポット数: {len(filtered_df)} 件")
 # 絞り込まれたリストからスポットを選択
 selected_spot_name = st.selectbox("▼ ターゲット・スポット選択", filtered_df['スポット'].tolist())
 spot_data = filtered_df[filtered_df['スポット'] == selected_spot_name].iloc[0]
@@ -90,14 +90,14 @@ with col_map:
         AntPath(locations=path_coords, delay=800, weight=6, color="#0088ff", pulse_color="#ffffff").add_to(m)
         folium.CircleMarker([faf_pos[0], faf_pos[1]], radius=6, color="#00ff00", fill=True, tooltip="御笠川 ファイナル合流点").add_to(m)
 
-  # 100スポットを地図上にプロット
+ # 100スポットを地図上にプロット
     for idx, row in filtered_df.iterrows():
         is_selected = (row["スポット"] == selected_spot_name)
         color = "green" if is_selected else "red"
-        # マップのピンにマウスを乗せると特徴が出る仕様！
+        # ▼ 修正：邪魔な数字（No）の表記を完全に消去しました！
         folium.Marker(
-            [float(row["緯度"]), float(row["経度"])], # ← ココを書き換えました！
-            tooltip=f"{row['No']}: {row['スポット']} ({row['特徴']})", 
+            [float(row["緯度"]), float(row["経度"])], 
+            tooltip=f"{row['スポット']} ({row['特徴']})", 
             icon=folium.Icon(color=color, icon="camera", prefix="fa")
         ).add_to(m)
 
