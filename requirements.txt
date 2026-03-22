@@ -3,3 +3,4 @@ google-genai
 folium
 streamlit-folium
 scipy
+pandas
