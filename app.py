@@ -90,30 +90,34 @@ with col_map:
     spot_lat = float(spot_data['緯度'])
     spot_lon = float(spot_data['経度'])
 
-    # ▼ 修正：【太陽の位置】を選択したスポットを中心に再計算！
-    sun_angle_deg = 90 + (sim_hour - 6) * 15 # 6時=東(90度), 12時=南(180度), 18時=西(270度)
-    sun_angle_rad = math.radians(sun_angle_deg)
-    r_sun = 0.012 # 画面に収まりやすい距離（約1.2km）
+    # ▼ 新規：【洗練された光線ビジュアル】をSVGで生成
+    # 太陽の方位角を計算（日本の昼12時は南(180度)）
+    # 北=0, 東=90, 南=180, 西=270
+    sun_azimuth = 180 + (sim_hour - 12) * 15
     
-    # 正しい方位計算（上が北、右が東）
-    sun_lat = spot_lat + r_sun * math.cos(sun_angle_rad)
-    sun_lon = spot_lon + r_sun * math.sin(sun_angle_rad)
+    # 選択スポットを中心に配置するSVGグラフィック（回転する光の扇形）
+    # 中心から外側に向かって透明になる金色のグラデーション
+    sunlight_svg = f"""
+    <svg width="200" height="200" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="transform: rotate({sun_azimuth}deg); transform-origin: center;">
+        <defs>
+            <radialGradient id="sunlightGradient" cx="50%" cy="50%" r="50%" fx="50%" fy="50%">
+                <stop offset="0%" style="stop-color:#FFD700;stop-opacity:0.8" />
+                <stop offset="100%" style="stop-color:#FFD700;stop-opacity:0" />
+            </radialGradient>
+        </defs>
+        <path d="M 50,50 L 37,1.5 A 50,50 0 0 1 63,1.5 Z" fill="url(#sunlightGradient)" />
+    </svg>
+    """
     
-    # 太陽のアイコン
+    # SVGをDivIconとして配置
     folium.Marker(
-        [sun_lat, sun_lon],
-        tooltip=f"☀️ 太陽の方向 ({sim_hour}:00)",
-        icon=folium.DivIcon(html='<div style="font-size: 35px; text-shadow: 0 0 10px #FFD700;">☀️</div>')
-    ).add_to(m)
-
-    # 太陽からスポットへの光のライン（点線）
-    folium.PolyLine(
-        locations=[[spot_lat, spot_lon], [sun_lat, sun_lon]],
-        color="#FFD700",
-        weight=3,
-        dash_array="5, 5",
-        opacity=0.6,
-        tooltip="光の向き"
+        [spot_lat, spot_lon],
+        tooltip=f"☀️ 光の方向 ({sim_hour}:00)",
+        icon=folium.DivIcon(
+            icon_size=(200, 200),
+            icon_anchor=(100, 100), # スポット座標に中心を合わせる
+            html=sunlight_svg
+        )
     ).add_to(m)
 
     # ▼ 【風向き】を空港中心に配置
