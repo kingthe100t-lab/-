@@ -8,6 +8,8 @@ from scipy.interpolate import interp1d
 from google import genai
 import pandas as pd
 import datetime
+import urllib.request
+import json
 
 st.set_page_config(layout="wide", page_title="SKY-DIRECTOR PRO")
 st.markdown("<h1 style='color: #0088ff;'>🛫 SKY-DIRECTOR PRO</h1>", unsafe_allow_html=True)
@@ -74,12 +76,46 @@ with col_map:
     with col_s2:
         sim_hour = st.slider("☀️ タイムライン（時刻）", 7, 22, 12)
 
-    if 7 <= sim_hour <= 11:
-        wind_dir, wind_speed, current_rwy = 160, 6, "16"
-    elif 12 <= sim_hour <= 16:
-        wind_dir, wind_speed, current_rwy = 330, 12, "34"
+    # ▼ 指定箇所のみ修正：リアルタイム気象データ（風向・風速）の取得と反映
+    @st.cache_data(ttl=3600) # 1時間に1回だけ最新の天気予報を取得する
+    def get_weather_forecast():
+        try:
+            # 福岡空港の座標で気象予測データを取得（APIキー不要のOpen-Meteoを使用）
+            url = "https://api.open-meteo.com/v1/forecast?latitude=33.585&longitude=130.445&hourly=winddirection_10m,windspeed_10m&timezone=Asia%2FTokyo"
+            req = urllib.request.Request(url)
+            with urllib.request.urlopen(req) as res:
+                return json.loads(res.read())
+        except:
+            return None
+
+    weather_data = get_weather_forecast()
+
+    if weather_data:
+        # 日本時間（JST）で本日・明日の日付を計算
+        jst = datetime.timezone(datetime.timedelta(hours=9))
+        target_date = datetime.datetime.now(jst)
+        if sim_day == "明日":
+            target_date += datetime.timedelta(days=1)
+            
+        target_time_str = f"{target_date.strftime('%Y-%m-%d')}T{sim_hour:02d}:00"
+        
+        try:
+            # 指定した日時の風向・風速データを抽出
+            idx = weather_data['hourly']['time'].index(target_time_str)
+            wind_dir = weather_data['hourly']['winddirection_10m'][idx]
+            wind_speed_kmh = weather_data['hourly']['windspeed_10m'][idx]
+            wind_speed = int(wind_speed_kmh * 0.539957) # km/h を ノット(kt) に変換
+
+            # ▼ 風向きから運用滑走路を自動判定
+            # 風向が東〜南〜西（90度〜270度）の場合は南風運用（RWY16）、それ以外は北風運用（RWY34）
+            if 90 <= wind_dir <= 270:
+                current_rwy = "16"
+            else:
+                current_rwy = "34"
+        except:
+            wind_dir, wind_speed, current_rwy = 160, 6, "16" # 取得失敗時の予備データ
     else:
-        wind_dir, wind_speed, current_rwy = 340, 18, "34"
+        wind_dir, wind_speed, current_rwy = 160, 6, "16" # 取得失敗時の予備データ
 
     plane_heading = 156 if current_rwy == "16" else 336
 
@@ -141,7 +177,6 @@ with col_map:
     plane_rot = plane_heading 
     plane_pos = [st.session_state.plane_lat, st.session_state.plane_lon]
 
-    # ▼ 指定箇所のみ修正：白枠(stroke)を削除し、サイズ(width/height)をさらに小さく調整しました
     plane_svg = f"""
     <style>
     .ghost-marker {{
@@ -250,7 +285,7 @@ with col_tactical:
             try:
                 api_key = st.secrets["GEMINI_API_KEY"]
                 client = genai.Client(api_key=api_key)
-                prompt = f"福岡空港の撮影スポット「{spot_data['スポット']}」での空撮助言。シミュレーション予定日時は「{sim_day}の{sim_hour}時」。被写体の飛行機はRWY{current_rwy}運用に従い機首を{plane_heading}度に向けています。この場所の特徴は「{spot_data['特徴']}」、マスターの持参する推奨焦点距離は「{spot_data['焦点距離']}」です。この機材と環境を活かしたマニアックな撮影戦術を解説せよ。Markdown記号は禁止。"
+                prompt = f"福岡空港の撮影スポット「{spot_data['スポット']}」での空撮助言。シミュレーション予定日時は「{sim_day}の{sim_hour}時」、風向は{wind_dir}度で風速は{wind_speed}kt。被写体の飛行機はRWY{current_rwy}運用に従い機首を{plane_heading}度に向けています。この場所の特徴は「{spot_data['特徴']}」、マスターの持参する推奨焦点距離は「{spot_data['焦点距離']}」です。この機材と環境を活かしたマニアックな撮影戦術を解説せよ。Markdown記号は禁止。"
                 response = client.models.generate_content(
                     model='gemini-2.5-flash',
                     contents=prompt,
