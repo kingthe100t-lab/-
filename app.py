@@ -76,7 +76,6 @@ with col_map:
     else:
         wind_dir, wind_speed, current_rwy = 340, 18, "34"
 
-    # 福岡空港の実際の滑走路方位に精密に合わせる（RWY16=156度、RWY34=336度）
     plane_heading = 156 if current_rwy == "16" else 336
 
     with metrics_placeholder.container():
@@ -97,9 +96,9 @@ with col_map:
         icon=folium.DivIcon(html=wind_html)
     ).add_to(m)
 
-    # 飛行機の進入ルート
+    # ▼ 指定箇所のみ修正：固定座標（今後の改修でも絶対に変更しません）
     rwy16_pos = np.array([33.5955, 130.4439])
-    rwy34_pos = np.array([33.5715, 130.4553])
+    rwy34_pos = np.array([33.5750, 130.4581])
     
     def create_smooth_path(points, num_points=120):
         lats, lons = [p[0] for p in points], [p[1] for p in points]
@@ -113,7 +112,8 @@ with col_map:
         path_coords = create_smooth_path([[33.720, 130.340], [33.660, 130.390], [33.620, 130.425], [rwy16_pos[0], rwy16_pos[1]]], 50)
         AntPath(locations=path_coords, delay=800, weight=6, color="#00f0ff", pulse_color="#ffffff", tooltip="RWY16 アプローチ・ルート").add_to(m)
     else:
-        faf_pos = [33.54419313430536, 130.48035280288278]
+        # ▼ 指定箇所のみ修正：ファイナル合流点（今後の改修でも絶対に変更しません）
+        faf_pos = [33.550558624462184, 130.47508525096282]
         curve_points = [
             [33.6800, 130.3000], [33.6200, 130.3500], [33.5700, 130.3950], 
             [33.5400, 130.4150], [33.5180, 130.4400], [33.5250, 130.4650], 
@@ -123,15 +123,19 @@ with col_map:
         AntPath(locations=path_coords, delay=800, weight=6, color="#0088ff", pulse_color="#ffffff", tooltip="RWY34 アプローチ・ルート").add_to(m)
         folium.CircleMarker(faf_pos, radius=6, color="#00ff00", fill=True, tooltip="ファイナル合流点").add_to(m)
 
-    # 太陽の方位角を計算
+    # 太陽の計算とグラデーション構築
     sun_azimuth = 180 + (sim_hour - 12) * 15
     sun_azimuth_rad = math.radians(sun_azimuth)
+    
+    x1 = 50 + 50 * math.sin(sun_azimuth_rad)
+    y1 = 50 - 50 * math.cos(sun_azimuth_rad)
+    x2 = 50 - 50 * math.sin(sun_azimuth_rad)
+    y2 = 50 + 50 * math.cos(sun_azimuth_rad)
 
     plane_rot = plane_heading - 45
     plane_pos = [st.session_state.plane_lat, st.session_state.plane_lon]
 
-    # ▼ 修正：巨大な四角形（rect）を廃止し、機体を起点とした扇形（path）の光線ビームにする
-    # ▼ さらに色を濃く、中心から外側へ透明になるグラデーションにする
+    # ▼ 指定箇所のみ修正：画面全体を染める巨大四角形に戻しつつ、中央で光の境界線を明瞭にしました。
     plane_svg = f"""
     <style>
     .ghost-marker {{
@@ -140,25 +144,26 @@ with col_map:
         border: none !important;
     }}
     </style>
-    <svg width="200" height="200" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+    <svg width="4000" height="4000" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
         <defs>
-            <radialGradient id="sunBeamGradient" cx="50%" cy="50%" r="50%" fx="50%" fy="50%">
-                <stop offset="0%" stop-color="#FF8800" stop-opacity="0.85" />
-                <stop offset="100%" stop-color="#FF8800" stop-opacity="0.0" />
-            </radialGradient>
+            <linearGradient id="sunLight" x1="{x1}%" y1="{y1}%" x2="{x2}%" y2="{y2}%">
+                <stop offset="0%" stop-color="#FF7700" stop-opacity="0.6" />
+                <stop offset="40%" stop-color="#FF8800" stop-opacity="0.4" />
+                <stop offset="55%" stop-color="#FF9900" stop-opacity="0.0" />
+                <stop offset="100%" stop-color="#FF9900" stop-opacity="0.0" />
+            </linearGradient>
         </defs>
+        <rect width="100" height="100" fill="url(#sunLight)" />
         
-        <path d="M 50,50 L 30,0 A 50,50 0 0 1 70,0 Z" fill="url(#sunBeamGradient)" style="transform: rotate({sun_azimuth}deg); transform-origin: 50px 50px;" />
-        
-        <text x="50" y="65" font-size="50" text-anchor="middle" style="transform: rotate({plane_rot}deg); transform-origin: 50px 50px; text-shadow: none;">✈️</text>
+        <text x="50" y="51.5" font-size="2" text-anchor="middle" style="transform: rotate({plane_rot}deg); transform-origin: 50px 50px;" >✈️</text>
     </svg>
     """
     
     folium.Marker(
         plane_pos,
         icon=folium.DivIcon(
-            icon_size=(200, 200), # サイズを現実的な大きさに戻す
-            icon_anchor=(100, 100), # 中心を合わせる
+            icon_size=(4000, 4000), 
+            icon_anchor=(2000, 2000), 
             html=plane_svg,
             class_name="ghost-marker" 
         ),
@@ -210,7 +215,6 @@ with col_map:
                 st.session_state.selected_spot = clicked_tooltip
                 st.rerun() 
         
-        # 光の枠をすり抜けて、地図をクリックした座標（飛行機のワープ先）を取得
         clicked_bg = map_data.get("last_clicked")
         if clicked_bg and clicked_bg != st.session_state.processed_click:
             st.session_state.processed_click = clicked_bg
