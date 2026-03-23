@@ -64,7 +64,6 @@ with col_map:
     st.markdown("##### ⚙️ シミュレーション・コントロール")
     col_s1, col_s2 = st.columns([1, 1.5])
     
-    # ▼ 新規：予習用の「日程」選択スイッチ
     with col_s1:
         sim_day = st.radio("📅 予定日", ["本日", "明日"], horizontal=True)
     with col_s2:
@@ -77,7 +76,6 @@ with col_map:
     else:
         wind_dir, wind_speed, current_rwy = 340, 18, "34"
 
-    # 運用滑走路に合わせて機首角を自動固定
     plane_heading = 160 if current_rwy == "16" else 340
 
     with metrics_placeholder.container():
@@ -85,7 +83,7 @@ with col_map:
         c1.metric("風向", f"{wind_dir}°")
         c2.metric("風速", f"{wind_speed} kt")
         c3.metric("運用滑走路", f"RWY {current_rwy}")
-        c4.metric("予定日時", f"{sim_day} {sim_hour}:00") # ▼ 表示を日時に変更
+        c4.metric("予定日時", f"{sim_day} {sim_hour}:00")
 
     # 全体マップの生成
     m = folium.Map(location=[33.560, 130.460], zoom_start=12, tiles="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", attr="Esri")
@@ -136,10 +134,17 @@ with col_map:
     plane_rot = plane_heading - 45
     plane_pos = [st.session_state.plane_lat, st.session_state.plane_lon]
 
-    # ▼ 修正：「pointer-events: none」を追加し地図のクリックを妨害しないように！
-    # ▼ 色をより濃い「#FF9900（ディープオレンジ/ゴールド）」に変更し、不透明度をアップ！
+    # ▼ 完全修正箇所：地図システムの枠にタッチ無効化（pointer-events: none）を強制注入！
     plane_svg = f"""
-    <svg width="800" height="800" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="pointer-events: none;">
+    <style>
+    /* この魔法でFolium側の透明な枠のタッチ判定を完全に消滅させます */
+    .ghost-marker {{
+        pointer-events: none !important;
+        background: transparent !important;
+        border: none !important;
+    }}
+    </style>
+    <svg width="800" height="800" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
         <defs>
             <linearGradient id="sunLight" x1="{x1}%" y1="{y1}%" x2="{x2}%" y2="{y2}%">
                 <stop offset="0%" stop-color="#FF9900" stop-opacity="0.85" />
@@ -157,12 +162,14 @@ with col_map:
     
     folium.Marker(
         plane_pos,
-        tooltip=f"被写体",
+        # ▼ 注意: ツールチップ（被写体という文字）があるとタッチを吸い込むので削除しました！
         icon=folium.DivIcon(
             icon_size=(800, 800), 
             icon_anchor=(400, 400), 
-            html=plane_svg
-        )
+            html=plane_svg,
+            class_name="ghost-marker" # ← これがATフィールド貫通の鍵です
+        ),
+        interactive=False # さらにダメ押しでタッチ操作を完全拒否
     ).add_to(m)
 
     # カメラの視線
@@ -177,7 +184,6 @@ with col_map:
         tooltip="カメラの視線（アングル）"
     ).add_to(m)
 
-    # 小さな専用カメラピンをSVGで生成
     def get_camera_svg(is_selected):
         bg_color = "#00FF00" if is_selected else "#FF4500"
         return f"""
@@ -211,7 +217,7 @@ with col_map:
                 st.session_state.selected_spot = clicked_tooltip
                 st.rerun() 
         
-        # ▼ クリックブロックが解除されたため、再びワープが発動します！
+        # 光の枠をすり抜けて、地図をクリックした座標（飛行機のワープ先）を取得
         clicked_bg = map_data.get("last_clicked")
         if clicked_bg and clicked_bg != st.session_state.processed_click:
             st.session_state.processed_click = clicked_bg
