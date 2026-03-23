@@ -141,7 +141,60 @@ with col_map:
     plane_rot = plane_heading 
     plane_pos = [st.session_state.plane_lat, st.session_state.plane_lon]
 
-    # ▼ 修正部分：不自然な縮小(scale)を削除し、綺麗な飛行機シルエットのパスに変更しました
     plane_svg = f"""
     <style>
-    .ghost-
+    .ghost-marker {{
+        pointer-events: none !important;
+        background: transparent !important;
+        border: none !important;
+        touch-action: none !important;
+    }}
+    </style>
+    <svg width="4000" height="4000" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" style="pointer-events: none !important; touch-action: none !important;">
+        <defs style="pointer-events: none !important;">
+            <linearGradient id="sunLight" x1="{x1}%" y1="{y1}%" x2="{x2}%" y2="{y2}%" style="pointer-events: none !important;">
+                <stop offset="0%" stop-color="#FF7700" stop-opacity="0.6" />
+                <stop offset="40%" stop-color="#FF8800" stop-opacity="0.4" />
+                <stop offset="55%" stop-color="#FF9900" stop-opacity="0.0" />
+                <stop offset="100%" stop-color="#FF9900" stop-opacity="0.0" />
+            </linearGradient>
+        </defs>
+        <rect width="100" height="100" fill="url(#sunLight)" style="pointer-events: none !important;" />
+        
+        <g style="transform: rotate({plane_rot}deg); transform-origin: 50px 50px; pointer-events: none !important;">
+            <path d="M 50 15 C 47 15 45 18 45 25 L 45 45 L 15 65 L 15 70 L 45 60 L 45 80 L 35 90 L 35 95 L 50 90 L 65 95 L 65 90 L 55 80 L 55 60 L 85 70 L 85 65 L 55 45 L 55 25 C 55 18 53 15 50 15 Z" 
+                  fill="#E0E0E0" stroke="#111111" stroke-width="1.5" 
+                  style="pointer-events: none !important;"/>
+        </g>
+    </svg>
+    """
+    
+    folium.Marker(
+        plane_pos,
+        icon=folium.DivIcon(
+            icon_size=(4000, 4000), 
+            icon_anchor=(2000, 2000), 
+            html=plane_svg,
+            class_name="ghost-marker" 
+        ),
+        interactive=False 
+    ).add_to(m)
+
+    spot_lat = float(spot_data['緯度'])
+    spot_lon = float(spot_data['経度'])
+    
+    folium.PolyLine(
+        locations=[[spot_lat, spot_lon], plane_pos],
+        color="#00FF00",
+        weight=3,
+        dash_array="5, 8",
+        tooltip="カメラの視線（アングル）"
+    ).add_to(m)
+
+    def get_camera_svg(is_selected):
+        bg_color = "#00FF00" if is_selected else "#FF4500"
+        return f"""
+        <svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="filter: drop-shadow(1px 2px 3px rgba(0,0,0,0.5));">
+            <circle cx="12" cy="12" r="11" fill="{bg_color}" stroke="white" stroke-width="2"/>
+            <path d="M 8 10 L 9.5 8.5 L 14.5 8.5 L 16 10 L 17 10 A 1 1 0 0 1 18 11 L 18 16 A 1 1 0 0 1 17 17 L 7 17 A 1 1 0 0 1 6 16 L 6 11 A 1 1 0 0 1 7 10 Z" fill="white"/>
+            <circle cx="12" cy="13.5" r="2.5" fill="{bg_
