@@ -36,6 +36,12 @@ if "plane_lon" not in st.session_state:
 if "processed_click" not in st.session_state:
     st.session_state.processed_click = None
 
+# ▼ 指定箇所のみ修正：ズームと中心座標の保存用変数を追加
+if "map_center" not in st.session_state:
+    st.session_state.map_center = [33.560, 130.460]
+if "map_zoom" not in st.session_state:
+    st.session_state.map_zoom = 12
+
 metrics_placeholder = st.empty()
 st.markdown("---")
 
@@ -85,8 +91,15 @@ with col_map:
         c3.metric("運用滑走路", f"RWY {current_rwy}")
         c4.metric("予定日時", f"{sim_day} {sim_hour}:00")
 
-    # 全体マップの生成
-    m = folium.Map(location=[33.560, 130.460], zoom_start=12, tiles="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", attr="Esri")
+    # ▼ 指定箇所のみ修正：地図がリロードされても直前のズーム・位置情報をキープする処理
+    if "main_map" in st.session_state and st.session_state["main_map"] is not None:
+        cached_map = st.session_state["main_map"]
+        if cached_map.get("center") and cached_map.get("zoom"):
+            st.session_state.map_center = [cached_map["center"]["lat"], cached_map["center"]["lng"]]
+            st.session_state.map_zoom = cached_map["zoom"]
+
+    # 全体マップの生成（セッションから位置とズームを読み込みます）
+    m = folium.Map(location=st.session_state.map_center, zoom_start=st.session_state.map_zoom, tiles="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", attr="Esri")
     
     # 風向きインジケーター
     wind_html = f'<div style="font-size: 35px; color: #00f0ff; text-shadow: 2px 2px 4px #000; transform: rotate({wind_dir}deg); transform-origin: center;">⬇</div>'
@@ -96,7 +109,6 @@ with col_map:
         icon=folium.DivIcon(html=wind_html)
     ).add_to(m)
 
-    # ▼ 指定箇所のみ修正：固定座標（今後の改修でも絶対に変更しません）
     rwy16_pos = np.array([33.5955, 130.4439])
     rwy34_pos = np.array([33.5750, 130.4581])
     
@@ -112,7 +124,6 @@ with col_map:
         path_coords = create_smooth_path([[33.720, 130.340], [33.660, 130.390], [33.620, 130.425], [rwy16_pos[0], rwy16_pos[1]]], 50)
         AntPath(locations=path_coords, delay=800, weight=6, color="#00f0ff", pulse_color="#ffffff", tooltip="RWY16 アプローチ・ルート").add_to(m)
     else:
-        # ▼ 指定箇所のみ修正：ファイナル合流点（今後の改修でも絶対に変更しません）
         faf_pos = [33.550558624462184, 130.47508525096282]
         curve_points = [
             [33.6800, 130.3000], [33.6200, 130.3500], [33.5700, 130.3950], 
@@ -132,10 +143,10 @@ with col_map:
     x2 = 50 - 50 * math.sin(sun_azimuth_rad)
     y2 = 50 + 50 * math.cos(sun_azimuth_rad)
 
-    plane_rot = plane_heading - 45
+    # ▼ 指定箇所のみ修正：新しい機体SVGは元から上向きなので、-45度の補正を解除
+    plane_rot = plane_heading 
     plane_pos = [st.session_state.plane_lat, st.session_state.plane_lon]
 
-    # ▼ 指定箇所のみ修正：画面全体を染める巨大四角形に戻しつつ、中央で光の境界線を明瞭にしました。
     plane_svg = f"""
     <style>
     .ghost-marker {{
@@ -155,7 +166,9 @@ with col_map:
         </defs>
         <rect width="100" height="100" fill="url(#sunLight)" />
         
-        <text x="50" y="51.5" font-size="2" text-anchor="middle" style="transform: rotate({plane_rot}deg); transform-origin: 50px 50px;" >✈️</text>
+        <g style="transform: rotate({plane_rot}deg); transform-origin: 50px 50px;">
+            <path d="M 50 15 C 46 15 44 20 44 30 L 44 45 L 10 65 L 10 70 L 44 60 L 44 80 L 30 90 L 30 95 L 50 90 L 70 95 L 70 90 L 56 80 L 56 60 L 90 70 L 90 65 L 56 45 L 56 30 C 56 20 54 15 50 15 Z" fill="#F8F9FA" stroke="#111111" stroke-width="3" transform="translate(50, 50) scale(0.025) translate(-50, -50)"/>
+        </g>
     </svg>
     """
     
