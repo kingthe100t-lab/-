@@ -76,7 +76,8 @@ with col_map:
     else:
         wind_dir, wind_speed, current_rwy = 340, 18, "34"
 
-    plane_heading = 160 if current_rwy == "16" else 340
+    # ▼ 修正：福岡空港の実際の滑走路方位に精密に合わせる（RWY16=156度、RWY34=336度）
+    plane_heading = 156 if current_rwy == "16" else 336
 
     with metrics_placeholder.container():
         c1, c2, c3, c4 = st.columns(4)
@@ -98,7 +99,7 @@ with col_map:
 
     # 飛行機の進入ルート
     rwy16_pos = np.array([33.5955, 130.4439])
-    rwy34_pos = np.array([33.5715, 130.4553])
+    rwy34_pos = np.array([33.57487440306816, 130.45841468884328])
     
     def create_smooth_path(points, num_points=120):
         lats, lons = [p[0] for p in points], [p[1] for p in points]
@@ -134,42 +135,42 @@ with col_map:
     plane_rot = plane_heading - 45
     plane_pos = [st.session_state.plane_lat, st.session_state.plane_lon]
 
-    # ▼ 完全修正箇所：地図システムの枠にタッチ無効化（pointer-events: none）を強制注入！
+    # ▼ 修正：円（circle）を廃止し、巨大な四角形（rect）で画面全体を覆う！
+    # ▼ さらに色を濃く（不透明度0.95）し、より強烈な光線状態を表現
     plane_svg = f"""
     <style>
-    /* この魔法でFolium側の透明な枠のタッチ判定を完全に消滅させます */
     .ghost-marker {{
         pointer-events: none !important;
         background: transparent !important;
         border: none !important;
     }}
     </style>
-    <svg width="800" height="800" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+    <svg width="4000" height="4000" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
         <defs>
             <linearGradient id="sunLight" x1="{x1}%" y1="{y1}%" x2="{x2}%" y2="{y2}%">
-                <stop offset="0%" stop-color="#FF9900" stop-opacity="0.85" />
-                <stop offset="40%" stop-color="#FF9900" stop-opacity="0.25" />
+                <stop offset="0%" stop-color="#FF7700" stop-opacity="0.95" />
+                <stop offset="45%" stop-color="#FF8800" stop-opacity="0.35" />
                 <stop offset="100%" stop-color="#FF9900" stop-opacity="0.0" />
             </linearGradient>
             <filter id="shadow">
-                <feDropShadow dx="1" dy="1" stdDeviation="1.5" flood-color="#000" flood-opacity="0.7"/>
+                <feDropShadow dx="0.5" dy="0.5" stdDeviation="0.5" flood-color="#000" flood-opacity="0.8"/>
             </filter>
         </defs>
-        <circle cx="50" cy="50" r="50" fill="url(#sunLight)" />
-        <text x="50" y="53" font-size="8" text-anchor="middle" style="transform: rotate({plane_rot}deg); transform-origin: 50px 50px;" filter="url(#shadow)">✈️</text>
+        <rect width="100" height="100" fill="url(#sunLight)" />
+        
+        <text x="50" y="51.5" font-size="2" text-anchor="middle" style="transform: rotate({plane_rot}deg); transform-origin: 50px 50px;" filter="url(#shadow)">✈️</text>
     </svg>
     """
     
     folium.Marker(
         plane_pos,
-        # ▼ 注意: ツールチップ（被写体という文字）があるとタッチを吸い込むので削除しました！
         icon=folium.DivIcon(
-            icon_size=(800, 800), 
-            icon_anchor=(400, 400), 
+            icon_size=(4000, 4000), # 巨大サイズでズームに対応
+            icon_anchor=(2000, 2000), 
             html=plane_svg,
-            class_name="ghost-marker" # ← これがATフィールド貫通の鍵です
+            class_name="ghost-marker" 
         ),
-        interactive=False # さらにダメ押しでタッチ操作を完全拒否
+        interactive=False 
     ).add_to(m)
 
     # カメラの視線
