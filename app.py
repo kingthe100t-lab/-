@@ -141,7 +141,7 @@ with col_map:
     plane_rot = plane_heading 
     plane_pos = [st.session_state.plane_lat, st.session_state.plane_lon]
 
-    # ▼ 指定箇所のみ修正：サイズ計算を独立させるため、内部にもう一つ小さなSVG空間を作成し、綺麗なプロ仕様のアイコンを配置しました
+    # ▼ 指定箇所のみ修正：白枠(stroke)を削除し、サイズ(width/height)をさらに小さく調整しました
     plane_svg = f"""
     <style>
     .ghost-marker {{
@@ -162,10 +162,10 @@ with col_map:
         </defs>
         <rect width="100" height="100" fill="url(#sunLight)" style="pointer-events: none !important;" />
         
-        <svg x="48.5" y="48.5" width="3" height="3" viewBox="0 0 24 24" style="pointer-events: none !important;">
+        <svg x="49" y="49" width="2" height="2" viewBox="0 0 24 24" style="pointer-events: none !important;">
             <g style="transform: rotate({plane_rot}deg); transform-origin: 12px 12px; pointer-events: none !important;">
                 <path d="M21,16v-2l-8-5V3.5C13,2.67,12.33,2,11.5,2S10,2.67,10,3.5V9l-8,5v2l8-2.5V19l-2,1.5V22l3.5-1l3.5,1v-1.5L13,19v-5.5L21,16z" 
-                      fill="#222222" stroke="#FFFFFF" stroke-width="1.2" stroke-linejoin="round"
+                      fill="#222222" stroke="none" stroke-width="0" stroke-linejoin="round"
                       style="pointer-events: none !important;"/>
             </g>
         </svg>
