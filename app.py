@@ -36,7 +36,6 @@ if "plane_lon" not in st.session_state:
 if "processed_click" not in st.session_state:
     st.session_state.processed_click = None
 
-# ▼ 指定箇所のみ修正：ズームと中心座標の保存用変数を追加
 if "map_center" not in st.session_state:
     st.session_state.map_center = [33.560, 130.460]
 if "map_zoom" not in st.session_state:
@@ -91,17 +90,14 @@ with col_map:
         c3.metric("運用滑走路", f"RWY {current_rwy}")
         c4.metric("予定日時", f"{sim_day} {sim_hour}:00")
 
-    # ▼ 指定箇所のみ修正：地図がリロードされても直前のズーム・位置情報をキープする処理
     if "main_map" in st.session_state and st.session_state["main_map"] is not None:
         cached_map = st.session_state["main_map"]
         if cached_map.get("center") and cached_map.get("zoom"):
             st.session_state.map_center = [cached_map["center"]["lat"], cached_map["center"]["lng"]]
             st.session_state.map_zoom = cached_map["zoom"]
 
-    # 全体マップの生成（セッションから位置とズームを読み込みます）
     m = folium.Map(location=st.session_state.map_center, zoom_start=st.session_state.map_zoom, tiles="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", attr="Esri")
     
-    # 風向きインジケーター
     wind_html = f'<div style="font-size: 35px; color: #00f0ff; text-shadow: 2px 2px 4px #000; transform: rotate({wind_dir}deg); transform-origin: center;">⬇</div>'
     folium.Marker(
         [33.585, 130.445],
@@ -134,7 +130,6 @@ with col_map:
         AntPath(locations=path_coords, delay=800, weight=6, color="#0088ff", pulse_color="#ffffff", tooltip="RWY34 アプローチ・ルート").add_to(m)
         folium.CircleMarker(faf_pos, radius=6, color="#00ff00", fill=True, tooltip="ファイナル合流点").add_to(m)
 
-    # 太陽の計算とグラデーション構築
     sun_azimuth = 180 + (sim_hour - 12) * 15
     sun_azimuth_rad = math.radians(sun_azimuth)
     
@@ -143,121 +138,24 @@ with col_map:
     x2 = 50 - 50 * math.sin(sun_azimuth_rad)
     y2 = 50 + 50 * math.cos(sun_azimuth_rad)
 
-    # ▼ 指定箇所のみ修正：新しい機体SVGは元から上向きなので、-45度の補正を解除
     plane_rot = plane_heading 
     plane_pos = [st.session_state.plane_lat, st.session_state.plane_lon]
 
+    # ▼ 修正：モバイル端末のブロックを貫通するため、すべてのタグに pointer-events: none を強制注入
+    # ▼ 修正：アイコンを洗練されたジェット旅客機のシルエットに変更
     plane_svg = f"""
     <style>
     .ghost-marker {{
         pointer-events: none !important;
         background: transparent !important;
         border: none !important;
+        touch-action: none !important;
     }}
     </style>
-    <svg width="4000" height="4000" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
-        <defs>
-            <linearGradient id="sunLight" x1="{x1}%" y1="{y1}%" x2="{x2}%" y2="{y2}%">
+    <svg width="4000" height="4000" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" style="pointer-events: none !important; touch-action: none !important;">
+        <defs style="pointer-events: none !important;">
+            <linearGradient id="sunLight" x1="{x1}%" y1="{y1}%" x2="{x2}%" y2="{y2}%" style="pointer-events: none !important;">
                 <stop offset="0%" stop-color="#FF7700" stop-opacity="0.6" />
                 <stop offset="40%" stop-color="#FF8800" stop-opacity="0.4" />
                 <stop offset="55%" stop-color="#FF9900" stop-opacity="0.0" />
-                <stop offset="100%" stop-color="#FF9900" stop-opacity="0.0" />
-            </linearGradient>
-        </defs>
-        <rect width="100" height="100" fill="url(#sunLight)" />
-        
-        <g style="transform: rotate({plane_rot}deg); transform-origin: 50px 50px;">
-            <path d="M 50 15 C 46 15 44 20 44 30 L 44 45 L 10 65 L 10 70 L 44 60 L 44 80 L 30 90 L 30 95 L 50 90 L 70 95 L 70 90 L 56 80 L 56 60 L 90 70 L 90 65 L 56 45 L 56 30 C 56 20 54 15 50 15 Z" fill="#F8F9FA" stroke="#111111" stroke-width="3" transform="translate(50, 50) scale(0.025) translate(-50, -50)"/>
-        </g>
-    </svg>
-    """
-    
-    folium.Marker(
-        plane_pos,
-        icon=folium.DivIcon(
-            icon_size=(4000, 4000), 
-            icon_anchor=(2000, 2000), 
-            html=plane_svg,
-            class_name="ghost-marker" 
-        ),
-        interactive=False 
-    ).add_to(m)
-
-    # カメラの視線
-    spot_lat = float(spot_data['緯度'])
-    spot_lon = float(spot_data['経度'])
-    
-    folium.PolyLine(
-        locations=[[spot_lat, spot_lon], plane_pos],
-        color="#00FF00",
-        weight=3,
-        dash_array="5, 8",
-        tooltip="カメラの視線（アングル）"
-    ).add_to(m)
-
-    def get_camera_svg(is_selected):
-        bg_color = "#00FF00" if is_selected else "#FF4500"
-        return f"""
-        <svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="filter: drop-shadow(1px 2px 3px rgba(0,0,0,0.5));">
-            <circle cx="12" cy="12" r="11" fill="{bg_color}" stroke="white" stroke-width="2"/>
-            <path d="M 8 10 L 9.5 8.5 L 14.5 8.5 L 16 10 L 17 10 A 1 1 0 0 1 18 11 L 18 16 A 1 1 0 0 1 17 17 L 7 17 A 1 1 0 0 1 6 16 L 6 11 A 1 1 0 0 1 7 10 Z" fill="white"/>
-            <circle cx="12" cy="13.5" r="2.5" fill="{bg_color}"/>
-        </svg>
-        """
-
-    # 100スポットを地図上にプロット
-    for idx, row in filtered_df.iterrows():
-        is_selected = (row["スポット"] == st.session_state.selected_spot)
-        folium.Marker(
-            [float(row["緯度"]), float(row["経度"])], 
-            tooltip=row['スポット'], 
-            icon=folium.DivIcon(
-                html=get_camera_svg(is_selected),
-                icon_size=(24, 24),
-                icon_anchor=(12, 12)
-            )
-        ).add_to(m)
-
-    # マップのイベントを監視
-    map_data = st_folium(m, use_container_width=True, height=600, key="main_map")
-    
-    if map_data:
-        clicked_tooltip = map_data.get("last_object_clicked_tooltip")
-        if clicked_tooltip and clicked_tooltip in filtered_df["スポット"].values:
-            if clicked_tooltip != st.session_state.selected_spot:
-                st.session_state.selected_spot = clicked_tooltip
-                st.rerun() 
-        
-        clicked_bg = map_data.get("last_clicked")
-        if clicked_bg and clicked_bg != st.session_state.processed_click:
-            st.session_state.processed_click = clicked_bg
-            st.session_state.plane_lat = clicked_bg["lat"]
-            st.session_state.plane_lon = clicked_bg["lng"]
-            st.rerun()
-
-with col_tactical:
-    st.markdown(f"### 🌐 選択中: {spot_data['スポット']}")
-    ms = folium.Map(location=[spot_lat, spot_lon], zoom_start=18, tiles="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", attr="Esri", control_scale=True)
-    
-    folium.Marker(
-        [spot_lat, spot_lon], 
-        icon=folium.DivIcon(html=get_camera_svg(True), icon_size=(24, 24), icon_anchor=(12, 12))
-    ).add_to(ms)
-    st_folium(ms, use_container_width=True, height=250, key="sub_map")
-    
-    st.success(f"**📝 特徴:** {spot_data['特徴']}  \n**🕒 ベスト:** {spot_data['ベスト時間']}  \n**📷 焦点距離:** {spot_data['焦点距離']}")
-    
-    st.markdown("### 🤖 TACTICAL A.I.")
-    if st.button("⚡ ブリーフィングをリクエスト", type="primary", use_container_width=True):
-        with st.spinner("ANALYZING..."):
-            try:
-                api_key = st.secrets["GEMINI_API_KEY"]
-                client = genai.Client(api_key=api_key)
-                prompt = f"福岡空港の撮影スポット「{spot_data['スポット']}」での空撮助言。シミュレーション予定日時は「{sim_day}の{sim_hour}時」。被写体の飛行機はRWY{current_rwy}運用に従い機首を{plane_heading}度に向けています。この場所の特徴は「{spot_data['特徴']}」、マスターの持参する推奨焦点距離は「{spot_data['焦点距離']}」です。この機材と環境を活かしたマニアックな撮影戦術を解説せよ。Markdown記号は禁止。"
-                response = client.models.generate_content(
-                    model='gemini-2.5-flash',
-                    contents=prompt,
-                )
-                st.info(response.text)
-            except Exception as e:
-                st.error(f"🚨 エラー詳細: {e}")
+                <stop offset="100%" stop
