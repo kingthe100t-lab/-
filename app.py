@@ -177,4 +177,84 @@ with col_map:
         icon=folium.DivIcon(
             icon_size=(4000, 4000), 
             icon_anchor=(2000, 2000), 
-            html=
+            html=plane_svg,
+            class_name="ghost-marker" 
+        ),
+        interactive=False 
+    ).add_to(m)
+
+    spot_lat = float(spot_data['緯度'])
+    spot_lon = float(spot_data['経度'])
+    
+    folium.PolyLine(
+        locations=[[spot_lat, spot_lon], plane_pos],
+        color="#00FF00",
+        weight=3,
+        dash_array="5, 8",
+        tooltip="カメラの視線（アングル）"
+    ).add_to(m)
+
+    def get_camera_svg(is_selected):
+        bg_color = "#00FF00" if is_selected else "#FF4500"
+        return f"""
+        <svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="filter: drop-shadow(1px 2px 3px rgba(0,0,0,0.5));">
+            <circle cx="12" cy="12" r="11" fill="{bg_color}" stroke="white" stroke-width="2"/>
+            <path d="M 8 10 L 9.5 8.5 L 14.5 8.5 L 16 10 L 17 10 A 1 1 0 0 1 18 11 L 18 16 A 1 1 0 0 1 17 17 L 7 17 A 1 1 0 0 1 6 16 L 6 11 A 1 1 0 0 1 7 10 Z" fill="white"/>
+            <circle cx="12" cy="13.5" r="2.5" fill="{bg_color}"/>
+        </svg>
+        """
+
+    for idx, row in filtered_df.iterrows():
+        is_selected = (row["スポット"] == st.session_state.selected_spot)
+        folium.Marker(
+            [float(row["緯度"]), float(row["経度"])], 
+            tooltip=row['スポット'], 
+            icon=folium.DivIcon(
+                html=get_camera_svg(is_selected),
+                icon_size=(24, 24),
+                icon_anchor=(12, 12)
+            )
+        ).add_to(m)
+
+    map_data = st_folium(m, use_container_width=True, height=600, key="main_map")
+    
+    if map_data:
+        clicked_tooltip = map_data.get("last_object_clicked_tooltip")
+        if clicked_tooltip and clicked_tooltip in filtered_df["スポット"].values:
+            if clicked_tooltip != st.session_state.selected_spot:
+                st.session_state.selected_spot = clicked_tooltip
+                st.rerun() 
+        
+        clicked_bg = map_data.get("last_clicked")
+        if clicked_bg and clicked_bg != st.session_state.processed_click:
+            st.session_state.processed_click = clicked_bg
+            st.session_state.plane_lat = clicked_bg["lat"]
+            st.session_state.plane_lon = clicked_bg["lng"]
+            st.rerun()
+
+with col_tactical:
+    st.markdown(f"### 🌐 選択中: {spot_data['スポット']}")
+    ms = folium.Map(location=[spot_lat, spot_lon], zoom_start=18, tiles="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", attr="Esri", control_scale=True)
+    
+    folium.Marker(
+        [spot_lat, spot_lon], 
+        icon=folium.DivIcon(html=get_camera_svg(True), icon_size=(24, 24), icon_anchor=(12, 12))
+    ).add_to(ms)
+    st_folium(ms, use_container_width=True, height=250, key="sub_map")
+    
+    st.success(f"**📝 特徴:** {spot_data['特徴']}  \n**🕒 ベスト:** {spot_data['ベスト時間']}  \n**📷 焦点距離:** {spot_data['焦点距離']}")
+    
+    st.markdown("### 🤖 TACTICAL A.I.")
+    if st.button("⚡ ブリーフィングをリクエスト", type="primary", use_container_width=True):
+        with st.spinner("ANALYZING..."):
+            try:
+                api_key = st.secrets["GEMINI_API_KEY"]
+                client = genai.Client(api_key=api_key)
+                prompt = f"福岡空港の撮影スポット「{spot_data['スポット']}」での空撮助言。シミュレーション予定日時は「{sim_day}の{sim_hour}時」。被写体の飛行機はRWY{current_rwy}運用に従い機首を{plane_heading}度に向けています。この場所の特徴は「{spot_data['特徴']}」、マスターの持参する推奨焦点距離は「{spot_data['焦点距離']}」です。この機材と環境を活かしたマニアックな撮影戦術を解説せよ。Markdown記号は禁止。"
+                response = client.models.generate_content(
+                    model='gemini-2.5-flash',
+                    contents=prompt,
+                )
+                st.info(response.text)
+            except Exception as e:
+                st.error(f"🚨 エラー詳細: {e}")
