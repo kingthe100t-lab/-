@@ -76,7 +76,7 @@ with col_map:
     else:
         wind_dir, wind_speed, current_rwy = 340, 18, "34"
 
-    # ▼ 修正：福岡空港の実際の滑走路方位に精密に合わせる（RWY16=156度、RWY34=336度）
+    # 福岡空港の実際の滑走路方位に精密に合わせる（RWY16=156度、RWY34=336度）
     plane_heading = 156 if current_rwy == "16" else 336
 
     with metrics_placeholder.container():
@@ -99,7 +99,7 @@ with col_map:
 
     # 飛行機の進入ルート
     rwy16_pos = np.array([33.5955, 130.4439])
-    rwy34_pos = np.array([33.57487440306816, 130.45841468884328])
+    rwy34_pos = np.array([33.5715, 130.4553])
     
     def create_smooth_path(points, num_points=120):
         lats, lons = [p[0] for p in points], [p[1] for p in points]
@@ -123,20 +123,15 @@ with col_map:
         AntPath(locations=path_coords, delay=800, weight=6, color="#0088ff", pulse_color="#ffffff", tooltip="RWY34 アプローチ・ルート").add_to(m)
         folium.CircleMarker(faf_pos, radius=6, color="#00ff00", fill=True, tooltip="ファイナル合流点").add_to(m)
 
-    # 太陽の計算とグラデーション構築
+    # 太陽の方位角を計算
     sun_azimuth = 180 + (sim_hour - 12) * 15
     sun_azimuth_rad = math.radians(sun_azimuth)
-    
-    x1 = 50 + 50 * math.sin(sun_azimuth_rad)
-    y1 = 50 - 50 * math.cos(sun_azimuth_rad)
-    x2 = 50 - 50 * math.sin(sun_azimuth_rad)
-    y2 = 50 + 50 * math.cos(sun_azimuth_rad)
 
     plane_rot = plane_heading - 45
     plane_pos = [st.session_state.plane_lat, st.session_state.plane_lon]
 
-    # ▼ 修正：円（circle）を廃止し、巨大な四角形（rect）で画面全体を覆う！
-    # ▼ さらに色を濃く（不透明度0.95）し、より強烈な光線状態を表現
+    # ▼ 修正：巨大な四角形（rect）を廃止し、機体を起点とした扇形（path）の光線ビームにする
+    # ▼ さらに色を濃く、中心から外側へ透明になるグラデーションにする
     plane_svg = f"""
     <style>
     .ghost-marker {{
@@ -145,28 +140,25 @@ with col_map:
         border: none !important;
     }}
     </style>
-    <svg width="4000" height="4000" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+    <svg width="200" height="200" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
         <defs>
-            <linearGradient id="sunLight" x1="{x1}%" y1="{y1}%" x2="{x2}%" y2="{y2}%">
-                <stop offset="0%" stop-color="#FF7700" stop-opacity="0.95" />
-                <stop offset="45%" stop-color="#FF8800" stop-opacity="0.35" />
-                <stop offset="100%" stop-color="#FF9900" stop-opacity="0.0" />
-            </linearGradient>
-            <filter id="shadow">
-                <feDropShadow dx="0.5" dy="0.5" stdDeviation="0.5" flood-color="#000" flood-opacity="0.8"/>
-            </filter>
+            <radialGradient id="sunBeamGradient" cx="50%" cy="50%" r="50%" fx="50%" fy="50%">
+                <stop offset="0%" stop-color="#FF8800" stop-opacity="0.85" />
+                <stop offset="100%" stop-color="#FF8800" stop-opacity="0.0" />
+            </radialGradient>
         </defs>
-        <rect width="100" height="100" fill="url(#sunLight)" />
         
-        <text x="50" y="51.5" font-size="2" text-anchor="middle" style="transform: rotate({plane_rot}deg); transform-origin: 50px 50px;" filter="url(#shadow)">✈️</text>
+        <path d="M 50,50 L 30,0 A 50,50 0 0 1 70,0 Z" fill="url(#sunBeamGradient)" style="transform: rotate({sun_azimuth}deg); transform-origin: 50px 50px;" />
+        
+        <text x="50" y="65" font-size="50" text-anchor="middle" style="transform: rotate({plane_rot}deg); transform-origin: 50px 50px; text-shadow: none;">✈️</text>
     </svg>
     """
     
     folium.Marker(
         plane_pos,
         icon=folium.DivIcon(
-            icon_size=(4000, 4000), # 巨大サイズでズームに対応
-            icon_anchor=(2000, 2000), 
+            icon_size=(200, 200), # サイズを現実的な大きさに戻す
+            icon_anchor=(100, 100), # 中心を合わせる
             html=plane_svg,
             class_name="ghost-marker" 
         ),
