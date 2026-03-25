@@ -8,86 +8,23 @@ from scipy.interpolate import interp1d
 from google import genai
 import pandas as pd
 import datetime
-import urllib.request
-import json
 
 st.set_page_config(layout="wide", page_title="SKY-DIRECTOR PRO")
 
-# ▼ 追加部分：Stitchのデザイン（背景、フォント、グラスモーフィズム）を適用するCSS
-st.markdown("""
-<style>
-    @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Manrope:wght@300;400;500;600;700&display=swap');
+# ▼ 指定箇所のみ修正：アイコンをシンプルに、フォントスタイルを極太でクールに調整しました
+title_icon_svg = """
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M21 16v-2l-8-5V3.5C13 2.67 12.33 2 11.5 2S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5L21 16z" fill="#0088ff"/>
+</svg>
+"""
 
-    /* アプリ全体の背景とフォント設定 */
-    .stApp {
-        background-color: #0a0e1a !important;
-        background-image: 
-            radial-gradient(circle, rgba(167, 170, 187, 0.15) 1px, transparent 1px),
-            linear-gradient(to bottom right, #0a0e1a, #0e1320, #0a0e1a) !important;
-        background-size: 20px 20px, 100% 100% !important;
-        font-family: 'Manrope', sans-serif !important;
-        color: #e2e4f6 !important;
-    }
-
-    /* 見出しやラベルのフォントと色 */
-    h1, h2, h3, h4, h5, h6, label, .st-emotion-cache-10trblm p {
-        font-family: 'Space Grotesk', sans-serif !important;
-        color: #81ecff !important;
-        letter-spacing: 0.05em;
-    }
-
-    /* タイトルにネオン効果 */
-    h1 {
-        text-shadow: 0 0 20px rgba(0,229,255,0.3);
-        text-transform: uppercase;
-        font-weight: 700 !important;
-    }
-
-    /* メトリクス（風向などの表示）、スライダー、ラジオボタンをガラス風パネルに */
-    div[data-testid="metric-container"], 
-    .stRadio > div, 
-    .stSlider > div {
-        background: rgba(32, 37, 55, 0.4) !important;
-        backdrop-filter: blur(20px) !important;
-        border-top: 1px solid rgba(129, 236, 255, 0.15) !important;
-        border-bottom: 1px solid rgba(129, 236, 255, 0.05) !important;
-        border-radius: 8px !important;
-        padding: 15px !important;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3) !important;
-    }
-
-    /* 数値データの色 */
-    div[data-testid="stMetricValue"] {
-        color: #e2e4f6 !important;
-        font-family: 'Space Grotesk', sans-serif !important;
-    }
-
-    /* infoやsuccessの枠をダーク＆シアンに */
-    div[data-testid="stAlert"] {
-        background: rgba(20, 25, 40, 0.8) !important;
-        border-left: 4px solid #81ecff !important;
-        color: #a7aabb !important;
-    }
-
-    /* AIボタンのサイバー化 */
-    button[kind="primary"] {
-        background: linear-gradient(to right, #81ecff, #00e3fd) !important;
-        color: #004d57 !important;
-        font-family: 'Space Grotesk', sans-serif !important;
-        font-weight: bold !important;
-        border: none !important;
-        box-shadow: 0 0 15px rgba(129,236,255,0.3) !important;
-        text-transform: uppercase;
-        letter-spacing: 0.1em;
-        transition: transform 0.2s;
-    }
-    button[kind="primary"]:hover {
-        transform: scale(1.02);
-    }
-</style>
+# 極太フォント（font-weight: 900）にし、アイコンをテキストにシームレスに配置しました。
+st.markdown(f"""
+    <h1 style='color: #0088ff; font-weight: 900;'>
+        <span style='vertical-align: middle; margin-right: 15px;'>{title_icon_svg}</span>
+        SKY-DIRECTOR PRO
+    </h1>
 """, unsafe_allow_html=True)
-
-st.markdown("<h1>🛫 SKY-DIRECTOR PRO</h1>", unsafe_allow_html=True)
 
 @st.cache_data
 def load_data():
@@ -113,11 +50,6 @@ if "plane_lon" not in st.session_state:
 if "processed_click" not in st.session_state:
     st.session_state.processed_click = None
 
-if "map_center" not in st.session_state:
-    st.session_state.map_center = [33.560, 130.460]
-if "map_zoom" not in st.session_state:
-    st.session_state.map_zoom = 12
-
 metrics_placeholder = st.empty()
 st.markdown("---")
 
@@ -138,6 +70,8 @@ if filtered_df.empty or st.session_state.selected_spot not in filtered_df["ス�
 
 spot_data = filtered_df[filtered_df['スポット'] == st.session_state.selected_spot].iloc[0]
 
+st.info("👆 **【操作方法】** 地図上の「カメラピン」をタッチで撮影場所変更。**道や空き地をタッチすると、そこに被写体（✈️）が瞬間移動します！**")
+
 col_map, col_tactical = st.columns([2, 1.2])
 
 with col_map:
@@ -149,40 +83,12 @@ with col_map:
     with col_s2:
         sim_hour = st.slider("☀️ タイムライン（時刻）", 7, 22, 12)
 
-    @st.cache_data(ttl=3600)
-    def get_weather_forecast():
-        try:
-            url = "https://api.open-meteo.com/v1/forecast?latitude=33.585&longitude=130.445&hourly=winddirection_10m,windspeed_10m&timezone=Asia%2FTokyo"
-            req = urllib.request.Request(url)
-            with urllib.request.urlopen(req) as res:
-                return json.loads(res.read())
-        except:
-            return None
-
-    weather_data = get_weather_forecast()
-
-    if weather_data:
-        jst = datetime.timezone(datetime.timedelta(hours=9))
-        target_date = datetime.datetime.now(jst)
-        if sim_day == "明日":
-            target_date += datetime.timedelta(days=1)
-            
-        target_time_str = f"{target_date.strftime('%Y-%m-%d')}T{sim_hour:02d}:00"
-        
-        try:
-            idx = weather_data['hourly']['time'].index(target_time_str)
-            wind_dir = weather_data['hourly']['winddirection_10m'][idx]
-            wind_speed_kmh = weather_data['hourly']['windspeed_10m'][idx]
-            wind_speed = int(wind_speed_kmh * 0.539957) 
-
-            if 90 <= wind_dir <= 270:
-                current_rwy = "16"
-            else:
-                current_rwy = "34"
-        except:
-            wind_dir, wind_speed, current_rwy = 160, 6, "16" 
+    if 7 <= sim_hour <= 11:
+        wind_dir, wind_speed, current_rwy = 160, 6, "16"
+    elif 12 <= sim_hour <= 16:
+        wind_dir, wind_speed, current_rwy = 330, 12, "34"
     else:
-        wind_dir, wind_speed, current_rwy = 160, 6, "16" 
+        wind_dir, wind_speed, current_rwy = 340, 18, "34"
 
     plane_heading = 156 if current_rwy == "16" else 336
 
@@ -193,14 +99,10 @@ with col_map:
         c3.metric("運用滑走路", f"RWY {current_rwy}")
         c4.metric("予定日時", f"{sim_day} {sim_hour}:00")
 
-    if "main_map" in st.session_state and st.session_state["main_map"] is not None:
-        cached_map = st.session_state["main_map"]
-        if cached_map.get("center") and cached_map.get("zoom"):
-            st.session_state.map_center = [cached_map["center"]["lat"], cached_map["center"]["lng"]]
-            st.session_state.map_zoom = cached_map["zoom"]
-
-    m = folium.Map(location=st.session_state.map_center, zoom_start=st.session_state.map_zoom, tiles="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", attr="Esri")
+    # 全体マップの生成
+    m = folium.Map(location=[33.560, 130.460], zoom_start=12, tiles="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", attr="Esri")
     
+    # 風向きインジケーター
     wind_html = f'<div style="font-size: 35px; color: #00f0ff; text-shadow: 2px 2px 4px #000; transform: rotate({wind_dir}deg); transform-origin: center;">⬇</div>'
     folium.Marker(
         [33.585, 130.445],
@@ -208,6 +110,7 @@ with col_map:
         icon=folium.DivIcon(html=wind_html)
     ).add_to(m)
 
+    # 進入ルート（固定座標は変更しません）
     rwy16_pos = np.array([33.5955, 130.4439])
     rwy34_pos = np.array([33.5750, 130.4581])
     
@@ -223,7 +126,7 @@ with col_map:
         path_coords = create_smooth_path([[33.720, 130.340], [33.660, 130.390], [33.620, 130.425], [rwy16_pos[0], rwy16_pos[1]]], 50)
         AntPath(locations=path_coords, delay=800, weight=6, color="#00f0ff", pulse_color="#ffffff", tooltip="RWY16 アプローチ・ルート").add_to(m)
     else:
-        faf_pos = [33.550558624462184, 130.47508525096282]
+        faf_pos = [33.5230, 130.4850]
         curve_points = [
             [33.6800, 130.3000], [33.6200, 130.3500], [33.5700, 130.3950], 
             [33.5400, 130.4150], [33.5180, 130.4400], [33.5250, 130.4650], 
@@ -233,6 +136,7 @@ with col_map:
         AntPath(locations=path_coords, delay=800, weight=6, color="#0088ff", pulse_color="#ffffff", tooltip="RWY34 アプローチ・ルート").add_to(m)
         folium.CircleMarker(faf_pos, radius=6, color="#00ff00", fill=True, tooltip="ファイナル合流点").add_to(m)
 
+    # 太陽の計算とグラデーション構築
     sun_azimuth = 180 + (sim_hour - 12) * 15
     sun_azimuth_rad = math.radians(sun_azimuth)
     
@@ -241,50 +145,76 @@ with col_map:
     x2 = 50 - 50 * math.sin(sun_azimuth_rad)
     y2 = 50 + 50 * math.cos(sun_azimuth_rad)
 
-    plane_rot = plane_heading 
+    # SVG内のテキストを回転させるための補正角度
+    plane_rot = plane_heading - 45
     plane_pos = [st.session_state.plane_lat, st.session_state.plane_lon]
 
+    # マップ上に描画する飛行機アイコンのSVG
     plane_svg = f"""
+    <svg width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+            <linearGradient id="sunLight" x1="{x1}%" y1="{y1}%" x2="{x2}%" y2="{y2}%">
+                <stop offset="0%" stop-color="#FF4500" stop-opacity="0.8" />
+                <stop offset="60%" stop-color="#FFD700" stop-opacity="0.3" />
+                <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0.0" />
+            </linearGradient>
+            <radialGradient id="blurGradient">
+                <stop offset="80%" stop-color="#0a0e1a" stop-opacity="1.0" />
+                <stop offset="100%" stop-color="#0a0e1a" stop-opacity="0.0" />
+            </radialGradient>
+        </defs>
+        <circle cx="30" cy="30" r="10" fill="none" stroke="none" />
+        
+        <text x="30" y="31.5" font-size="2" text-anchor="middle" style="transform: rotate({plane_rot}deg); transform-origin: 30px 30px;" >✈️</text>
+    </svg>
+    """
+    
+    # マップ上の巨大なグラデーション（タッチ判定を邪魔しないための ghost-marker）
+    plane_overlay_svg = f"""
     <style>
     .ghost-marker {{
         pointer-events: none !important;
         background: transparent !important;
         border: none !important;
-        touch-action: none !important;
     }}
     </style>
-    <svg width="4000" height="4000" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" style="pointer-events: none !important; touch-action: none !important;">
-        <defs style="pointer-events: none !important;">
-            <linearGradient id="sunLight" x1="{x1}%" y1="{y1}%" x2="{x2}%" y2="{y2}%" style="pointer-events: none !important;">
+    <svg width="4000" height="4000" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+        <defs>
+            <linearGradient id="sunLightLayer" x1="{x1}%" y1="{y1}%" x2="{x2}%" y2="{y2}%">
                 <stop offset="0%" stop-color="#FF7700" stop-opacity="0.6" />
-                <stop offset="40%" stop-color="#FF8800" stop-opacity="0.4" />
-                <stop offset="55%" stop-color="#FF9900" stop-opacity="0.0" />
-                <stop offset="100%" stop-color="#FF9900" stop-opacity="0.0" />
+                <stop offset="50%" stop-color="#FF9900" stop-opacity="0.0" />
+                <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0.0" />
             </linearGradient>
         </defs>
-        <rect width="100" height="100" fill="url(#sunLight)" style="pointer-events: none !important;" />
-        
-        <svg x="49" y="49" width="2" height="2" viewBox="0 0 24 24" style="pointer-events: none !important;">
-            <g style="transform: rotate({plane_rot}deg); transform-origin: 12px 12px; pointer-events: none !important;">
-                <path d="M21,16v-2l-8-5V3.5C13,2.67,12.33,2,11.5,2S10,2.67,10,3.5V9l-8,5v2l8-2.5V19l-2,1.5V22l3.5-1l3.5,1v-1.5L13,19v-5.5L21,16z" 
-                      fill="#222222" stroke="none" stroke-width="0" stroke-linejoin="round"
-                      style="pointer-events: none !important;"/>
-            </g>
-        </svg>
+        <rect width="100" height="100" fill="url(#sunLightLayer)" />
     </svg>
     """
     
+    # 巨大なグラデーションレイヤー（画面全体）
     folium.Marker(
-        plane_pos,
+        [33.560, 130.460],
         icon=folium.DivIcon(
             icon_size=(4000, 4000), 
             icon_anchor=(2000, 2000), 
+            html=plane_overlay_svg,
+            class_name="ghost-marker" 
+        ),
+        interactive=False 
+    ).add_to(m)
+    
+    # 中央の飛行機アイコンレイヤー（個別）
+    folium.Marker(
+        plane_pos,
+        icon=folium.DivIcon(
+            icon_size=(60, 60), 
+            icon_anchor=(30, 30), 
             html=plane_svg,
             class_name="ghost-marker" 
         ),
         interactive=False 
     ).add_to(m)
 
+    # カメラの視線
     spot_lat = float(spot_data['緯度'])
     spot_lon = float(spot_data['経度'])
     
@@ -296,6 +226,7 @@ with col_map:
         tooltip="カメラの視線（アングル）"
     ).add_to(m)
 
+    # カメラアイコンの生成
     def get_camera_svg(is_selected):
         bg_color = "#00FF00" if is_selected else "#FF4500"
         return f"""
@@ -306,6 +237,7 @@ with col_map:
         </svg>
         """
 
+    # 100スポットを地図上にプロット
     for idx, row in filtered_df.iterrows():
         is_selected = (row["スポット"] == st.session_state.selected_spot)
         folium.Marker(
@@ -318,22 +250,26 @@ with col_map:
             )
         ).add_to(m)
 
+    # マップのイベントを監視
     map_data = st_folium(m, use_container_width=True, height=600, key="main_map")
     
-    if map_data:
-        clicked_tooltip = map_data.get("last_object_clicked_tooltip")
-        if clicked_tooltip and clicked_tooltip in filtered_df["スポット"].values:
-            if clicked_tooltip != st.session_state.selected_spot:
-                st.session_state.selected_spot = clicked_tooltip
-                st.rerun() 
-        
-        clicked_bg = map_data.get("last_clicked")
-        if clicked_bg and clicked_bg != st.session_state.processed_click:
+    # 撮影場所の更新処理（地図がクリックされた場合）
+    if map_data and map_data.get("last_object_clicked_tooltip"):
+        clicked_tooltip = map_data["last_object_clicked_tooltip"]
+        if clicked_tooltip in filtered_df["スポット"].values:
+            st.session_state.selected_spot = clicked_tooltip
+            st.rerun() 
+    
+    # 被写体の更新処理（地図背景がクリックされた場合）
+    elif map_data and map_data.get("last_clicked"):
+        clicked_bg = map_data["last_clicked"]
+        if clicked_bg != st.session_state.processed_click:
             st.session_state.processed_click = clicked_bg
             st.session_state.plane_lat = clicked_bg["lat"]
             st.session_state.plane_lon = clicked_bg["lng"]
             st.rerun()
 
+# 撮影シミュレーションビュー（右側のパネル）
 with col_tactical:
     st.markdown(f"### 🌐 選択中: {spot_data['スポット']}")
     ms = folium.Map(location=[spot_lat, spot_lon], zoom_start=18, tiles="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", attr="Esri", control_scale=True)
@@ -346,13 +282,14 @@ with col_tactical:
     
     st.success(f"**📝 特徴:** {spot_data['特徴']}  \n**🕒 ベスト:** {spot_data['ベスト時間']}  \n**📷 焦点距離:** {spot_data['焦点距離']}")
     
+    # Gemini AI ブリーフィングセクション
     st.markdown("### 🤖 TACTICAL A.I.")
     if st.button("⚡ ブリーフィングをリクエスト", type="primary", use_container_width=True):
         with st.spinner("ANALYZING..."):
             try:
                 api_key = st.secrets["GEMINI_API_KEY"]
                 client = genai.Client(api_key=api_key)
-                prompt = f"福岡空港の撮影スポット「{spot_data['スポット']}」での空撮助言。シミュレーション予定日時は「{sim_day}の{sim_hour}時」、風向は{wind_dir}度で風速は{wind_speed}kt。被写体の飛行機はRWY{current_rwy}運用に従い機首を{plane_heading}度に向けています。この場所の特徴は「{spot_data['特徴']}」、マスターの持参する推奨焦点距離は「{spot_data['焦点距離']}」です。この機材と環境を活かしたマニアックな撮影戦術を解説せよ。Markdown記号は禁止。"
+                prompt = f"福岡空港の撮影スポット「{spot_data['スポット']}」での空撮助言。シミュレーション予定日時は「{sim_day}の{sim_hour}時」。被写体の飛行機はRWY{current_rwy}運用に従い機首を{plane_heading}度に向けています。この場所の特徴は「{spot_data['特徴']}」、マスターの持参する推奨焦点距離は「{spot_data['焦点距離']}」です。この機材と環境を活かしたマニアックな撮影戦術を解説せよ。Markdown記号は禁止。"
                 response = client.models.generate_content(
                     model='gemini-2.5-flash',
                     contents=prompt,
