@@ -8,9 +8,86 @@ from scipy.interpolate import interp1d
 from google import genai
 import pandas as pd
 import datetime
+import urllib.request
+import json
 
 st.set_page_config(layout="wide", page_title="SKY-DIRECTOR PRO")
-st.markdown("<h1 style='color: #0088ff;'>🛫 SKY-DIRECTOR PRO</h1>", unsafe_allow_html=True)
+
+# ▼ 追加部分：Stitchのデザイン（背景、フォント、グラスモーフィズム）を適用するCSS
+st.markdown("""
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Manrope:wght@300;400;500;600;700&display=swap');
+
+    /* アプリ全体の背景とフォント設定 */
+    .stApp {
+        background-color: #0a0e1a !important;
+        background-image: 
+            radial-gradient(circle, rgba(167, 170, 187, 0.15) 1px, transparent 1px),
+            linear-gradient(to bottom right, #0a0e1a, #0e1320, #0a0e1a) !important;
+        background-size: 20px 20px, 100% 100% !important;
+        font-family: 'Manrope', sans-serif !important;
+        color: #e2e4f6 !important;
+    }
+
+    /* 見出しやラベルのフォントと色 */
+    h1, h2, h3, h4, h5, h6, label, .st-emotion-cache-10trblm p {
+        font-family: 'Space Grotesk', sans-serif !important;
+        color: #81ecff !important;
+        letter-spacing: 0.05em;
+    }
+
+    /* タイトルにネオン効果 */
+    h1 {
+        text-shadow: 0 0 20px rgba(0,229,255,0.3);
+        text-transform: uppercase;
+        font-weight: 700 !important;
+    }
+
+    /* メトリクス（風向などの表示）、スライダー、ラジオボタンをガラス風パネルに */
+    div[data-testid="metric-container"], 
+    .stRadio > div, 
+    .stSlider > div {
+        background: rgba(32, 37, 55, 0.4) !important;
+        backdrop-filter: blur(20px) !important;
+        border-top: 1px solid rgba(129, 236, 255, 0.15) !important;
+        border-bottom: 1px solid rgba(129, 236, 255, 0.05) !important;
+        border-radius: 8px !important;
+        padding: 15px !important;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3) !important;
+    }
+
+    /* 数値データの色 */
+    div[data-testid="stMetricValue"] {
+        color: #e2e4f6 !important;
+        font-family: 'Space Grotesk', sans-serif !important;
+    }
+
+    /* infoやsuccessの枠をダーク＆シアンに */
+    div[data-testid="stAlert"] {
+        background: rgba(20, 25, 40, 0.8) !important;
+        border-left: 4px solid #81ecff !important;
+        color: #a7aabb !important;
+    }
+
+    /* AIボタンのサイバー化 */
+    button[kind="primary"] {
+        background: linear-gradient(to right, #81ecff, #00e3fd) !important;
+        color: #004d57 !important;
+        font-family: 'Space Grotesk', sans-serif !important;
+        font-weight: bold !important;
+        border: none !important;
+        box-shadow: 0 0 15px rgba(129,236,255,0.3) !important;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        transition: transform 0.2s;
+    }
+    button[kind="primary"]:hover {
+        transform: scale(1.02);
+    }
+</style>
+""", unsafe_allow_html=True)
+
+st.markdown("<h1>🛫 SKY-DIRECTOR PRO</h1>", unsafe_allow_html=True)
 
 @st.cache_data
 def load_data():
@@ -72,12 +149,40 @@ with col_map:
     with col_s2:
         sim_hour = st.slider("☀️ タイムライン（時刻）", 7, 22, 12)
 
-    if 7 <= sim_hour <= 11:
-        wind_dir, wind_speed, current_rwy = 160, 6, "16"
-    elif 12 <= sim_hour <= 16:
-        wind_dir, wind_speed, current_rwy = 330, 12, "34"
+    @st.cache_data(ttl=3600)
+    def get_weather_forecast():
+        try:
+            url = "https://api.open-meteo.com/v1/forecast?latitude=33.585&longitude=130.445&hourly=winddirection_10m,windspeed_10m&timezone=Asia%2FTokyo"
+            req = urllib.request.Request(url)
+            with urllib.request.urlopen(req) as res:
+                return json.loads(res.read())
+        except:
+            return None
+
+    weather_data = get_weather_forecast()
+
+    if weather_data:
+        jst = datetime.timezone(datetime.timedelta(hours=9))
+        target_date = datetime.datetime.now(jst)
+        if sim_day == "明日":
+            target_date += datetime.timedelta(days=1)
+            
+        target_time_str = f"{target_date.strftime('%Y-%m-%d')}T{sim_hour:02d}:00"
+        
+        try:
+            idx = weather_data['hourly']['time'].index(target_time_str)
+            wind_dir = weather_data['hourly']['winddirection_10m'][idx]
+            wind_speed_kmh = weather_data['hourly']['windspeed_10m'][idx]
+            wind_speed = int(wind_speed_kmh * 0.539957) 
+
+            if 90 <= wind_dir <= 270:
+                current_rwy = "16"
+            else:
+                current_rwy = "34"
+        except:
+            wind_dir, wind_speed, current_rwy = 160, 6, "16" 
     else:
-        wind_dir, wind_speed, current_rwy = 340, 18, "34"
+        wind_dir, wind_speed, current_rwy = 160, 6, "16" 
 
     plane_heading = 156 if current_rwy == "16" else 336
 
@@ -247,7 +352,7 @@ with col_tactical:
             try:
                 api_key = st.secrets["GEMINI_API_KEY"]
                 client = genai.Client(api_key=api_key)
-                prompt = f"福岡空港の撮影スポット「{spot_data['スポット']}」での空撮助言。シミュレーション予定日時は「{sim_day}の{sim_hour}時」。被写体の飛行機はRWY{current_rwy}運用に従い機首を{plane_heading}度に向けています。この場所の特徴は「{spot_data['特徴']}」、マスターの持参する推奨焦点距離は「{spot_data['焦点距離']}」です。この機材と環境を活かしたマニアックな撮影戦術を解説せよ。Markdown記号は禁止。"
+                prompt = f"福岡空港の撮影スポット「{spot_data['スポット']}」での空撮助言。シミュレーション予定日時は「{sim_day}の{sim_hour}時」、風向は{wind_dir}度で風速は{wind_speed}kt。被写体の飛行機はRWY{current_rwy}運用に従い機首を{plane_heading}度に向けています。この場所の特徴は「{spot_data['特徴']}」、マスターの持参する推奨焦点距離は「{spot_data['焦点距離']}」です。この機材と環境を活かしたマニアックな撮影戦術を解説せよ。Markdown記号は禁止。"
                 response = client.models.generate_content(
                     model='gemini-2.5-flash',
                     contents=prompt,
