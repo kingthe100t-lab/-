@@ -38,7 +38,7 @@ st.markdown("""
         text-shadow: 0 0 20px rgba(0,229,255,0.3);
         text-transform: uppercase;
         font-weight: 700 !important;
-        font-size: 32px !important;
+        font-size: 24px !important;
         margin-bottom: 20px !important;
     }
 
@@ -76,10 +76,21 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# タイトル（クールでシンプルな文字のみ）
-st.markdown("<h1>SKY-DIRECTOR PRO</h1>", unsafe_allow_html=True)
+# 🛫 タイトルとアイコン
+title_icon_svg = """
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M21 16v-2l-8-5V3.5C13 2.67 12.33 2 11.5 2S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5L21 16z" fill="#0088ff"/>
+</svg>
+"""
 
-# ▼ 修正部分：PROCEDURAL ADVISORY パネル（画像通りのサイバーな操作案内）
+st.markdown(f"""
+    <h1 style='color: #0088ff; font-weight: 900;'>
+        <span style='vertical-align: middle; margin-right: 15px; font-size: 1.5em;'>{title_icon_svg}</span>
+        SKY-DIRECTOR PRO
+    </h1>
+""", unsafe_allow_html=True)
+
+# PROCEDURAL ADVISORY パネル
 advisory_html = """
 <div style="background: rgba(10, 14, 26, 0.6); backdrop-filter: blur(10px); border: 1px solid rgba(129, 236, 255, 0.3); border-radius: 6px; padding: 12px 16px; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0, 227, 253, 0.1);">
     <div style="color: #81ecff; font-family: 'Space Grotesk', sans-serif; font-size: 10px; font-weight: 600; letter-spacing: 0.15em; margin-bottom: 8px; border-bottom: 1px solid rgba(129, 236, 255, 0.2); padding-bottom: 4px; display: inline-block;">
@@ -250,7 +261,7 @@ with col_map:
     plane_rot = plane_heading 
     plane_pos = [st.session_state.plane_lat, st.session_state.plane_lon]
 
-    # ▼ 修正部分：座標ズレを解消し、シンプルなシルエットの機体を「適切な見やすい大きさ」で表示
+    # ▼ 完全修復：地図上の飛行機アイコンを「以前OKをもらった白枠なしの小さい黒色」に確実に戻しました
     plane_svg = f"""
     <style>
     .ghost-marker {{
@@ -271,10 +282,10 @@ with col_map:
         </defs>
         <rect width="100" height="100" fill="url(#sunLight)" style="pointer-events: none !important;" />
         
-        <svg x="48.5" y="48.5" width="3" height="3" viewBox="0 0 24 24" style="pointer-events: none !important;">
+        <svg x="49" y="49" width="2" height="2" viewBox="0 0 24 24" style="pointer-events: none !important;">
             <g style="transform: rotate({plane_rot}deg); transform-origin: 12px 12px; pointer-events: none !important;">
-                <path d="M21 16v-2l-8-5V3.5C13 2.67 12.33 2 11.5 2S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5L21 16z" 
-                      fill="#E0E0E0" stroke="#111111" stroke-width="0.5" 
+                <path d="M21,16v-2l-8-5V3.5C13,2.67,12.33,2,11.5,2S10,2.67,10,3.5V9l-8,5v2l8-2.5V19l-2,1.5V22l3.5-1l3.5,1v-1.5L13,19v-5.5L21,16z" 
+                      fill="#222222" stroke="none" stroke-width="0" stroke-linejoin="round"
                       style="pointer-events: none !important;"/>
             </g>
         </svg>
