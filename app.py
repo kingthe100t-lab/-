@@ -10,6 +10,7 @@ import pandas as pd
 import datetime
 import urllib.request
 import json
+from branca.element import Element
 
 st.set_page_config(layout="wide", page_title="SKY-DIRECTOR PRO")
 
@@ -205,13 +206,37 @@ with col_map:
         c3.metric("運用滑走路", f"RWY {current_rwy}")
         c4.metric("予定日時", f"{sim_day} {sim_hour}:00")
 
-    if "main_map" in st.session_state and st.session_state["main_map"] is not None:
-        cached_map = st.session_state["main_map"]
-        if cached_map.get("center") and cached_map.get("zoom"):
-            st.session_state.map_center = [cached_map["center"]["lat"], cached_map["center"]["lng"]]
-            st.session_state.map_zoom = cached_map["zoom"]
-
-    m = folium.Map(location=st.session_state.map_center, zoom_start=st.session_state.map_zoom, tiles="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", attr="Esri")
+    m = folium.Map(location=[33.560, 130.460], zoom_start=12, tiles="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", attr="Esri")
+    
+    # ▼ 追加：ズームと位置をブラウザ側に記憶させ、チカチカせずに縮尺を維持する魔法のスクリプト
+    keep_zoom_js = """
+    <script>
+    setTimeout(function(){
+        var map_instance = null;
+        for (var key in window) {
+            if (key.startsWith("map_") && window[key].getZoom) {
+                map_instance = window[key];
+                break;
+            }
+        }
+        if (map_instance) {
+            var savedZoom = sessionStorage.getItem('sd_map_zoom');
+            var savedLat = sessionStorage.getItem('sd_map_lat');
+            var savedLng = sessionStorage.getItem('sd_map_lng');
+            if (savedZoom !== null && savedLat !== null && savedLng !== null) {
+                map_instance.setView([parseFloat(savedLat), parseFloat(savedLng)], parseInt(savedZoom), {animate: false});
+            }
+            map_instance.on('moveend', function() {
+                sessionStorage.setItem('sd_map_zoom', map_instance.getZoom());
+                var center = map_instance.getCenter();
+                sessionStorage.setItem('sd_map_lat', center.lat);
+                sessionStorage.setItem('sd_map_lng', center.lng);
+            });
+        }
+    }, 200);
+    </script>
+    """
+    m.get_root().html.add_child(Element(keep_zoom_js))
     
     wind_html = f'<div style="font-size: 35px; color: #81ecff; text-shadow: 2px 2px 4px #000; transform: rotate({wind_dir}deg); transform-origin: center;">⬇</div>'
     folium.Marker(
@@ -330,13 +355,13 @@ with col_map:
             )
         ).add_to(m)
 
-    # ▼ 修正：縮尺を維持するため、ズームと座標の監視を再開（他は一切変更していません）
+    # ▼ 修正：ズームと座標の監視を外し、チカチカするリロードを完全に遮断
     map_data = st_folium(
         m, 
         use_container_width=True, 
         height=600, 
         key="main_map",
-        returned_objects=["last_object_clicked_tooltip", "last_clicked", "zoom", "center"]
+        returned_objects=["last_object_clicked_tooltip", "last_clicked"]
     )
     
     if map_data:
