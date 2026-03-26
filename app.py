@@ -250,4 +250,139 @@ with col_map:
     
     x1 = 50 + 50 * math.sin(sun_azimuth_rad)
     y1 = 50 - 50 * math.cos(sun_azimuth_rad)
-    x
+    x2 = 50 - 50 * math.sin(sun_azimuth_rad)
+    y2 = 50 + 50 * math.cos(sun_azimuth_rad)
+
+    plane_rot = plane_heading 
+    plane_pos = [st.session_state.plane_lat, st.session_state.plane_lon]
+
+    plane_svg = f"""
+    <style>
+    .ghost-marker {{
+        pointer-events: none !important;
+        background: transparent !important;
+        border: none !important;
+        touch-action: none !important;
+    }}
+    </style>
+    <svg width="4000" height="4000" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" style="pointer-events: none !important; touch-action: none !important;">
+        <defs style="pointer-events: none !important;">
+            <linearGradient id="sunLight" x1="{x1}%" y1="{y1}%" x2="{x2}%" y2="{y2}%" style="pointer-events: none !important;">
+                <stop offset="0%" stop-color="#FF7700" stop-opacity="0.6" />
+                <stop offset="40%" stop-color="#FF8800" stop-opacity="0.4" />
+                <stop offset="55%" stop-color="#FF9900" stop-opacity="0.0" />
+                <stop offset="100%" stop-color="#FF9900" stop-opacity="0.0" />
+            </linearGradient>
+        </defs>
+        <rect width="100" height="100" fill="url(#sunLight)" style="pointer-events: none !important;" />
+        
+        <svg x="49" y="49" width="2" height="2" viewBox="0 0 24 24" style="pointer-events: none !important;">
+            <g style="transform: rotate({plane_rot}deg); transform-origin: 12px 12px; pointer-events: none !important;">
+                <path d="M21,16v-2l-8-5V3.5C13,2.67,12.33,2,11.5,2S10,2.67,10,3.5V9l-8,5v2l8-2.5V19l-2,1.5V22l3.5-1l3.5,1v-1.5L13,19v-5.5L21,16z" 
+                      fill="#222222" stroke="none" stroke-width="0" stroke-linejoin="round"
+                      style="pointer-events: none !important;"/>
+            </g>
+        </svg>
+    </svg>
+    """
+    
+    folium.Marker(
+        plane_pos,
+        icon=folium.DivIcon(
+            icon_size=(4000, 4000), 
+            icon_anchor=(2000, 2000), 
+            html=plane_svg,
+            class_name="ghost-marker" 
+        ),
+        interactive=False 
+    ).add_to(m)
+
+    spot_lat = float(spot_data['緯度'])
+    spot_lon = float(spot_data['経度'])
+    
+    folium.PolyLine(
+        locations=[[spot_lat, spot_lon], plane_pos],
+        color="#81ecff",
+        weight=3,
+        dash_array="5, 8",
+        tooltip="カメラの視線（アングル）"
+    ).add_to(m)
+
+    def get_camera_svg(is_selected):
+        bg_color = "#81ecff" if is_selected else "#444756"
+        return f"""
+        <svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="filter: drop-shadow(1px 2px 3px rgba(0,0,0,0.5));">
+            <circle cx="12" cy="12" r="11" fill="{bg_color}" stroke="#0a0e1a" stroke-width="2"/>
+            <path d="M 8 10 L 9.5 8.5 L 14.5 8.5 L 16 10 L 17 10 A 1 1 0 0 1 18 11 L 18 16 A 1 1 0 0 1 17 17 L 7 17 A 1 1 0 0 1 6 16 L 6 11 A 1 1 0 0 1 7 10 Z" fill="#0a0e1a"/>
+            <circle cx="12" cy="13.5" r="2.5" fill="{bg_color}"/>
+        </svg>
+        """
+
+    for idx, row in filtered_df.iterrows():
+        is_selected = (row["スポット"] == st.session_state.selected_spot)
+        folium.Marker(
+            [float(row["緯度"]), float(row["経度"])], 
+            tooltip=row['スポット'], 
+            icon=folium.DivIcon(
+                html=get_camera_svg(is_selected),
+                icon_size=(24, 24),
+                icon_anchor=(12, 12)
+            )
+        ).add_to(m)
+
+    # ▼ 修正：縮尺を維持するため、ズームと座標の監視を再開（他は一切変更していません）
+    map_data = st_folium(
+        m, 
+        use_container_width=True, 
+        height=600, 
+        key="main_map",
+        returned_objects=["last_object_clicked_tooltip", "last_clicked", "zoom", "center"]
+    )
+    
+    if map_data:
+        clicked_tooltip = map_data.get("last_object_clicked_tooltip")
+        if clicked_tooltip and clicked_tooltip in filtered_df["スポット"].values:
+            if clicked_tooltip != st.session_state.selected_spot:
+                st.session_state.selected_spot = clicked_tooltip
+                st.rerun() 
+        
+        clicked_bg = map_data.get("last_clicked")
+        if clicked_bg and clicked_bg != st.session_state.processed_click:
+            st.session_state.processed_click = clicked_bg
+            st.session_state.plane_lat = clicked_bg["lat"]
+            st.session_state.plane_lon = clicked_bg["lng"]
+            st.rerun()
+
+with col_tactical:
+    st.markdown(f"### 🌐 選択中: {spot_data['スポット']}")
+    ms = folium.Map(location=[spot_lat, spot_lon], zoom_start=18, tiles="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", attr="Esri", control_scale=True)
+    
+    folium.Marker(
+        [spot_lat, spot_lon], 
+        icon=folium.DivIcon(html=get_camera_svg(True), icon_size=(24, 24), icon_anchor=(12, 12))
+    ).add_to(ms)
+    
+    st_folium(
+        ms, 
+        use_container_width=True, 
+        height=250, 
+        key="sub_map",
+        returned_objects=[]
+    )
+    
+    st.success(f"**📝 特徴:** {spot_data['特徴']}  \n**🕒 ベスト:** {spot_data['ベスト時間']}  \n**📷 焦点距離:** {spot_data['焦点距離']}")
+    
+    st.markdown("### 🤖 TACTICAL A.I.")
+    if st.button("⚡ ブリーフィングをリクエスト", type="primary", use_container_width=True):
+        with st.spinner("ANALYZING..."):
+            try:
+                api_key = st.secrets["GEMINI_API_KEY"]
+                client = genai.Client(api_key=api_key)
+                prompt = f"福岡空港の撮影スポット「{spot_data['スポット']}」での空撮助言。シミュレーション予定日時は「{sim_day}の{sim_hour}時」、風向は{wind_dir}度で風速は{wind_speed}kt。被写体の飛行機はRWY{current_rwy}運用に従い機首を{plane_heading}度に向けています。この場所の特徴は「{spot_data['特徴']}」、マスターの持参する推奨焦点距離は「{spot_data['焦点距離']}」です。この機材と環境を活かしたマニアックな撮影戦術を解説せよ。Markdown記号は禁止。"
+                response = client.models.generate_content(
+                    model='gemini-2.5-flash',
+                    contents=prompt,
+                )
+                st.info(response.text)
+            except Exception as e:
+                st.error(f"🚨 エラー詳細: {e}")
