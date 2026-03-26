@@ -131,11 +131,6 @@ if "plane_lon" not in st.session_state:
 if "processed_click" not in st.session_state:
     st.session_state.processed_click = None
 
-if "map_center" not in st.session_state:
-    st.session_state.map_center = [33.560, 130.460]
-if "map_zoom" not in st.session_state:
-    st.session_state.map_zoom = 12
-
 metrics_placeholder = st.empty()
 st.markdown("---")
 
@@ -210,13 +205,8 @@ with col_map:
         c3.metric("運用滑走路", f"RWY {current_rwy}")
         c4.metric("予定日時", f"{sim_day} {sim_hour}:00")
 
-    if "main_map" in st.session_state and st.session_state["main_map"] is not None:
-        cached_map = st.session_state["main_map"]
-        if cached_map.get("center") and cached_map.get("zoom"):
-            st.session_state.map_center = [cached_map["center"]["lat"], cached_map["center"]["lng"]]
-            st.session_state.map_zoom = cached_map["zoom"]
-
-    m = folium.Map(location=st.session_state.map_center, zoom_start=st.session_state.map_zoom, tiles="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", attr="Esri")
+    # ▼ 修正：ズームとセンターの自動保存を廃止し、初期位置を固定化
+    m = folium.Map(location=[33.560, 130.460], zoom_start=12, tiles="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", attr="Esri")
     
     wind_html = f'<div style="font-size: 35px; color: #81ecff; text-shadow: 2px 2px 4px #000; transform: rotate({wind_dir}deg); transform-origin: center;">⬇</div>'
     folium.Marker(
@@ -261,7 +251,6 @@ with col_map:
     plane_rot = plane_heading 
     plane_pos = [st.session_state.plane_lat, st.session_state.plane_lon]
 
-    # ▼ 完全修復：地図上の飛行機アイコンを「以前OKをもらった白枠なしの小さい黒色」に確実に戻しました
     plane_svg = f"""
     <style>
     .ghost-marker {{
@@ -336,7 +325,14 @@ with col_map:
             )
         ).add_to(m)
 
-    map_data = st_folium(m, use_container_width=True, height=600, key="main_map")
+    # ▼ 修正：ズーム時のリロードを遮断するため、戻り値（returned_objects）をタップ関連のみに制限
+    map_data = st_folium(
+        m, 
+        use_container_width=True, 
+        height=600, 
+        key="main_map",
+        returned_objects=["last_object_clicked_tooltip", "last_clicked"]
+    )
     
     if map_data:
         clicked_tooltip = map_data.get("last_object_clicked_tooltip")
@@ -360,7 +356,15 @@ with col_tactical:
         [spot_lat, spot_lon], 
         icon=folium.DivIcon(html=get_camera_svg(True), icon_size=(24, 24), icon_anchor=(12, 12))
     ).add_to(ms)
-    st_folium(ms, use_container_width=True, height=250, key="sub_map")
+    
+    # ▼ 修正：右側のサブマップもズーム通信を完全に遮断
+    st_folium(
+        ms, 
+        use_container_width=True, 
+        height=250, 
+        key="sub_map",
+        returned_objects=[]
+    )
     
     st.success(f"**📝 特徴:** {spot_data['特徴']}  \n**🕒 ベスト:** {spot_data['ベスト時間']}  \n**📷 焦点距離:** {spot_data['焦点距離']}")
     
