@@ -165,7 +165,7 @@ html_app = f"""
                     <div><div class="text-[#a7aabb] mb-1">予定日時</div><div class="text-xl text-white font-bold" id="cTime">--</div></div>
                 </div>
 
-                <div id="map" class="w-full h-[600px] rounded-lg border border-[#81ecff]/30 shadow-[0_0_20px_rgba(0,229,255,0.1)] z-0"></div>
+                <div id="map" class="w-full h-[350px] rounded-lg border border-[#81ecff]/30 shadow-[0_0_20px_rgba(0,229,255,0.1)] z-0"></div>
             </div>
 
             <div class="flex flex-col gap-4">
