@@ -287,7 +287,7 @@ html_app = f"""
             }}).addTo(markersLayer);
 
             // 4. Airplane
-            let heading = currentRwy === "16" ? 156 : 336;
+            let heading = currentRwy === "16" ? 150 : 330;
             let planeIcon = L.divIcon({{ html: getPlaneSvg(heading), className: '' }});
             L.marker([planeLat, planeLng], {{icon: planeIcon, interactive: false}}).addTo(markersLayer);
         }}
