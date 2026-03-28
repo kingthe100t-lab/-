@@ -72,67 +72,73 @@ html_app = f"""
     <script src="https://cdn.jsdelivr.net/npm/leaflet-ant-path@1.3.0/dist/leaflet-ant-path.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Manrope:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        /* 🌌 全体の文字にうっすらとした光のにじみを追加 */
+        /* 🌌 全体の文字にうっすらとした光のにじみを追加（グロー2倍） */
         body { 
-            background-color: #04060d; /* 宇宙の深淵を表現するため、背景をさらに漆黒に調整 */
+            background-color: #04060d; 
             color: #e2e4f6; 
             font-family: 'Manrope', sans-serif; 
             margin: 0; 
             padding: 0; 
-            text-shadow: 0 0 8px rgba(167, 170, 187, 0.3); 
+            text-shadow: 0 0 16px rgba(167, 170, 187, 0.6); /* 発光の広がりと濃さを倍増 */
         }
 
-        /* 🌌 ドットの大型化と発光効果（芯＋ぼんやりした光層のダブルレイヤー） */
+        /* 🌌 ドットの大型化と発光効果（ドットサイズ2倍、グロー2倍） */
         .app-container {
             background-image: 
-                radial-gradient(circle, rgba(129, 236, 255, 0.9) 1.5px, transparent 3px), /* 光るドットの芯 */
-                radial-gradient(circle, rgba(129, 236, 255, 0.2) 6px, transparent 12px),  /* ぼんやりとしたグロー */
-                linear-gradient(to bottom right, #020308, #0a0e1a, #020308); /* 深い宇宙のグラデーション */
-            background-size: 35px 35px, 35px 35px, 100% 100%; /* ドットの間隔を広くして星空感を演出 */
+                radial-gradient(circle, rgba(129, 236, 255, 0.9) 3px, transparent 6px),   /* ドットの芯：1.5px → 3px */
+                radial-gradient(circle, rgba(129, 236, 255, 0.3) 12px, transparent 24px), /* ドットの光：6px → 12px */
+                linear-gradient(to bottom right, #020308, #0a0e1a, #020308); 
+            background-size: 50px 50px, 50px 50px, 100% 100%; /* ドットが大きくなった分、間隔も広げてバランス調整 */
             min-height: 100vh;
             padding: 1.5rem;
             box-sizing: border-box;
         }
 
         .glass-panel {
-            background: rgba(15, 20, 35, 0.5); /* パネルを少し暗くして発光を目立たせる */
+            background: rgba(15, 20, 35, 0.5); 
             backdrop-filter: blur(20px);
-            border-top: 1px solid rgba(129, 236, 255, 0.2);
-            border-bottom: 1px solid rgba(129, 236, 255, 0.05);
+            border-top: 1px solid rgba(129, 236, 255, 0.3); /* フチの光を少し強調 */
+            border-bottom: 1px solid rgba(129, 236, 255, 0.1);
             border-radius: 8px;
-            box-shadow: 0 8px 32px rgba(0, 229, 255, 0.1);
+            box-shadow: 0 8px 32px rgba(0, 229, 255, 0.2);
         }
         
-        /* 🌌 見出しや専用フォントに強力なネオングローを追加 */
+        /* 🌌 見出しや専用フォントに強力なネオングロー（グロー2倍） */
         .neon-text { 
-            text-shadow: 0 0 15px rgba(0,229,255,0.6), 0 0 30px rgba(0,229,255,0.3); 
+            text-shadow: 0 0 30px rgba(0,229,255,0.8), 0 0 60px rgba(0,229,255,0.5); /* 15px→30px, 30px→60px に倍増 */
             font-family: 'Space Grotesk', sans-serif; 
             color: #81ecff; 
         }
         .space-font { 
             font-family: 'Space Grotesk', sans-serif; 
-            text-shadow: 0 0 10px rgba(129, 236, 255, 0.5); /* 文字がフワッと光る */
+            text-shadow: 0 0 20px rgba(129, 236, 255, 0.8); /* 10px→20px に倍増 */
         }
         
+        /* 🌌 ボタンやスライダーの光も倍増 */
         .cyber-btn {
             background: linear-gradient(to right, #81ecff, #00e3fd); color: #004d57; font-family: 'Space Grotesk', sans-serif; font-weight: 700;
-            text-transform: uppercase; letter-spacing: 0.1em; border: none; box-shadow: 0 0 20px rgba(129,236,255,0.5); cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;
+            text-transform: uppercase; letter-spacing: 0.1em; border: none; 
+            box-shadow: 0 0 40px rgba(129,236,255,0.7); /* ボタンの発光 20px→40px */
+            cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;
         }
         .cyber-btn:hover { 
             transform: scale(1.02); 
-            box-shadow: 0 0 30px rgba(129,236,255,0.8); /* ホバー時にさらに強く発光 */
+            box-shadow: 0 0 60px rgba(129,236,255,1.0); /* ホバー時はさらに強烈に発光 */
         }
         
         input[type=range] { -webkit-appearance: none; background: transparent; width: 100%; outline: none; }
         input[type=range]::-webkit-slider-thumb {
-            -webkit-appearance: none; height: 16px; width: 16px; border-radius: 50%; background: #81ecff; cursor: pointer; box-shadow: 0 0 15px #81ecff; margin-top: -6px;
+            -webkit-appearance: none; height: 16px; width: 16px; border-radius: 50%; background: #81ecff; cursor: pointer; 
+            box-shadow: 0 0 30px #81ecff; /* スライダーのツマミ発光 15px→30px */
+            margin-top: -6px;
         }
         input[type=range]::-webkit-slider-runnable-track {
             width: 100%; height: 4px; cursor: pointer; background: rgba(129, 236, 255, 0.2); border-radius: 2px;
+            box-shadow: 0 0 10px rgba(129, 236, 255, 0.3); /* レール部分にもうっすら発光を追加 */
         }
         .leaflet-container { background: #0a0e1a; font-family: 'Manrope', sans-serif; }
         .ghost-marker { pointer-events: none !important; background: transparent !important; border: none !important; margin-left: -12px !important; margin-top: -12px !important; }
-        .custom-radio input[type="radio"] { accent-color: #81ecff; cursor: pointer; filter: drop-shadow(0 0 5px #81ecff); }
+        .custom-radio input[type="radio"] { accent-color: #81ecff; cursor: pointer; filter: drop-shadow(0 0 10px #81ecff); } /* ラジオボタン発光 5px→10px */
     </style>
 </head>
 <body>
