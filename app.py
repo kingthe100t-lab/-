@@ -341,39 +341,65 @@ html_app = f"""
                 </svg>
             </div>`;
         }}
-
+function getSunPositionHud(simHour) {{
+            // サンサーベイヤー風のAR天球アーチを構築
+            let t = (simHour - 6) / 12; 
+            let angle = t * Math.PI;
+            
+            // 夜間(18時以降・6時未満)はアーチを暗くし、太陽を非表示に
+            let isNight = simHour < 6 || simHour >= 18;
+            let archOpacity = isNight ? 0.3 : 0.6;
+            let sunOpacity = isNight ? 0.0 : 1.0;
+            
+            // 太陽の軌跡（黄金のアーチとシアンのアーチ）
+            const arch = `
+                <path d="M10,90 Q70,0 130,90" fill="none" stroke="#ffaa00" stroke-width="1" opacity="${{archOpacity}}" />
+                <path d="M20,90 Q70,0 120,90" fill="none" stroke="#81ecff" stroke-width="1" opacity="${{archOpacity * 0.8}}" />
+            `;
+            
+            // 時間目盛り (7h〜22h)
+            let ticks = '';
+            for (let h = 7; h <= 22; h++) {{
+                let th = (h - 6) / 12;
+                let tx = 10 + 120 * th; // 地平線に沿って配置
+                let ty = 90 - 90 * Math.sin(th * Math.PI); // アーチに沿って配置
+                if (h % 2 === 0) {{ // 2時間ごとの目盛り
+                    ticks += `<line x1="${{tx}}" y1="${{ty}}" x2="${{tx}}" y2="${{ty + 3}}" stroke="#a7aabb" stroke-width="0.5" opacity="0.7" />`;
+                    ticks += `<text x="${{tx}}" y="${{ty + 10}}" fill="#a7aabb" font-size="7" text-anchor="middle" font-family="Manrope" opacity="0.7">${{h}}h</text>`;
+                }}
+            }}
+            
+            // 現在の太陽の位置
+            let sx = 10 + 120 * t;
+            let sy = 90 - 90 * Math.sin(angle);
+            
+            // 現在の太陽と時間
+            const sunAndTime = isNight ? '' : `
+                <circle cx="${{sx}}" cy="${{sy}}" r="4" fill="#81ecff" style="filter: drop-shadow(0 0 6px #81ecff);" opacity="${{sunOpacity}}" />
+                
+                <text x="70" y="80" fill="#81ecff" font-size="20" font-weight="900" text-anchor="middle" font-family="Space Grotesk" style="filter: drop-shadow(0 0 8px rgba(129,236,255,0.7));">${{String(simHour).padStart(2, '0')}}:00</text>
+                <text x="70" y="90" fill="#a7aabb" font-size="8" text-anchor="middle" font-family="Manrope" opacity="0.8">JST</text>
+            `;
+            
+            return `
+            <div style="width: 140px; height: 120px; border-radius: 8px; border: 1px solid rgba(129, 236, 255, 0.3); background: rgba(10, 14, 26, 0.7); padding: 8px; font-family: 'Manrope', sans-serif; z-index: 10;">
+                <svg width="140" height="100" viewBox="0 0 140 100" style="filter: drop-shadow(0 0 8px rgba(129,236,255,0.7));">
+                    <line x1="0" y1="90" x2="140" y2="90" stroke="#81ecff" stroke-width="1" opacity="0.4" />
+                    
+                    ${{arch}}
+                    ${{ticks}}
+                    ${{sunAndTime}}
+                </svg>
+            </div>
+            `;
+        }}
         function renderMapElements() {{
             markersLayer.clearLayers();
 
-            // 1. Wind Indicator (Fixed HUD Overlay)
-            let animSpeed = Math.max(0.4, 2.5 - (windSpeed * 0.15)); 
-            let windSvg = `
-            <div style="width: 80px; height: 80px; filter: drop-shadow(0 0 10px rgba(129,236,255,0.8));">
-                <svg width="80" height="80" viewBox="0 0 80 80" style="transform: rotate(${{windDir}}deg);">
-                    <style>
-                        @keyframes windFlow {{
-                            0% {{ transform: translateY(-20px); opacity: 0; }}
-                            20% {{ opacity: 1; }}
-                            80% {{ opacity: 1; }}
-                            100% {{ transform: translateY(20px); opacity: 0; }}
-                        }}
-                        .w-line1 {{ animation: windFlow ${{animSpeed}}s linear infinite; }}
-                        .w-line2 {{ animation: windFlow ${{animSpeed * 1.3}}s linear infinite 0.2s; opacity: 0.6; }}
-                        .w-line3 {{ animation: windFlow ${{animSpeed * 0.8}}s linear infinite 0.4s; opacity: 0.6; }}
-                    </style>
-                    <circle cx="40" cy="40" r="30" fill="none" stroke="#81ecff" stroke-width="1" stroke-dasharray="2, 4" opacity="0.3" />
-                    <circle cx="40" cy="40" r="15" fill="none" stroke="#81ecff" stroke-width="1" stroke-dasharray="2, 4" opacity="0.5" />
-                    <circle cx="40" cy="40" r="2" fill="#81ecff" />
-                    
-                    <g fill="none" stroke="#81ecff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path class="w-line1" d="M40,20 L40,60 M34,54 L40,60 L46,54" />
-                        <path class="w-line2" d="M26,25 L26,55 M22,51 L26,55 L30,51" />
-                        <path class="w-line3" d="M54,30 L54,50 M50,46 L54,50 L58,46" />
-                    </g>
-                </svg>
-            </div>`;
-            // マーカーではなく、画面固定のHUDレイヤーに直接HTMLを注入する
-            document.getElementById('wind-hud').innerHTML = windSvg;
+            // 1. AR Sun Position HUD (Fixed HUD Overlay)
+            let sunHudHtml = getSunPositionHud(simHour);
+            // 画面固定のHUDレイヤーに直接HTMLを注入する
+            document.getElementById('wind-hud').innerHTML = sunHudHtml;
 
             let windIcon = L.divIcon({{
                 html: windSvg,
