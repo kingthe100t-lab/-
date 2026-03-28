@@ -170,21 +170,7 @@ html_app = f"""
             </svg>
             SKY-DIRECTOR PRO
         </h1>
-
-        <div style="background: rgba(10, 14, 26, 0.6); backdrop-filter: blur(10px); border: 1px solid rgba(129, 236, 255, 0.3); border-radius: 6px; padding: 12px 16px; box-shadow: 0 4px 15px rgba(0, 227, 253, 0.1);">
-            <div class="space-font" style="color: #81ecff; font-size: 10px; font-weight: 600; letter-spacing: 0.15em; margin-bottom: 8px; border-bottom: 1px solid rgba(129, 236, 255, 0.2); padding-bottom: 4px; display: inline-block;">
-                PROCEDURAL ADVISORY
-            </div>
-            <div style="color: #a7aabb; font-size: 13px; display: flex; align-items: center;">
-                <span style="font-size: 16px; margin-right: 8px;">👆</span>
-                【操作方法】地図上の「カメラピン」をタッチで撮影場所変更。道や空き地をタッチすると、そこに被写体（
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align: text-bottom; margin: 0 4px;">
-                    <path d="M21 16v-2l-8-5V3.5C13 2.67 12.33 2 11.5 2S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5L21 16z" fill="#81ecff"/>
-                </svg>
-                ）が瞬間移動します！<b class="text-[#81ecff] ml-2">※完全独立システム稼働中（ズーム維持・チカチカ無効化）</b>
-            </div>
-        </div>
-
+        
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1">
             <div class="lg:col-span-7 flex flex-col gap-4">
                 <div class="flex flex-col md:flex-row gap-4">
