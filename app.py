@@ -192,7 +192,15 @@ html_app = f"""
                 marker.on('click', () => {{ currentSpot=spot; updateUI(); renderMapElements(); }});
             }});
             L.polyline([[currentSpot['緯度'],currentSpot['経度']],[planeLat,planeLng]],{{color:'#81ecff',weight:2,dashArray:'5,10'}}).addTo(markersLayer);
-            L.marker([planeLat,planeLng],{{icon:L.divIcon({{html:getPlaneSvg(currentRwy==="16"?156:336),className:''}})}}).addTo(markersLayer);
+            L.marker([planeLat, planeLng], {{
+                icon: L.divIcon({{
+                    html: getPlaneSvg(currentRwy === "16" ? 156 : 336),
+                    className: '',
+                    iconSize: [44, 44],
+                    iconAnchor: [22, 22]
+                }}),
+                interactive: false
+            }}).addTo(markersLayer);
             updateAntPath();
         }}
 
