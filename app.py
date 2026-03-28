@@ -75,6 +75,19 @@ html_app = f"""
     <script src="https://cdn.jsdelivr.net/npm/leaflet-ant-path@1.3.0/dist/leaflet-ant-path.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@700&family=Manrope:wght@400;700&display=swap" rel="stylesheet">
     <style>
+    <style>
+        html, body {{ background: #04060d; ... }} /* 既存のコード */
+        .app-container {{ ... }} /* 既存のコード */
+
+        /* ▼ ここに以下の3行を追記してください ▼ */
+        #sun-glow-overlay {{
+            transition: background 0.5s ease;
+            mix-blend-mode: screen;
+            z-index: 400;
+        }}
+        /* ▲ ここまで ▲ */
+
+        .glass-panel {{ ... }} /* 既存のコード */
         html, body {{ background: #04060d; color: #e2e4f6; font-family: 'Manrope', sans-serif; margin: 0; padding: 0; height: 100%; overflow: hidden; position: fixed; width: 100%; }}
         .app-container {{ position: absolute; inset: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 1.5rem; background: radial-gradient(circle at center, #0a0e1a 0%, #020308 100%); }}
         .glass-panel {{ background: rgba(15, 20, 35, 0.6); backdrop-filter: blur(20px); border: 1px solid rgba(129, 236, 255, 0.2); border-radius: 12px; }}
@@ -123,6 +136,7 @@ html_app = f"""
 
                     <div class="relative w-full h-[400px] lg:h-[600px]">
                         <div id="map" class="absolute inset-0 rounded-xl border border-[#81ecff]/30 shadow-2xl"></div>
+                        <div id="sun-glow-overlay" style="position: absolute; inset: 0; z-index: 400; pointer-events: none; border-radius: 12px;"></div>
                         <div id="wind-hud" class="absolute bottom-6 left-6 z-[400] pointer-events-none"></div>
                     </div>
                 </div>
@@ -205,25 +219,18 @@ html_app = f"""
             let decl = 23.45 * Math.sin((360/365)*(dayOfYear-81)*Math.PI/180)*Math.PI/180, lat = 33.58*Math.PI/180;
             let cosH0 = -Math.tan(lat)*Math.tan(decl), H0 = Math.acos(Math.max(-1,Math.min(1,cosH0)))*180/Math.PI;
             let rise = 12-H0/15, set = 12+H0/15, isNight = h < rise || h > set;
-            
-            // 描画の中心を調整
             function getX(h) {{ return 85 + (h-12)*12; }}
             function getY(h) {{ let ha = 15*(h-12)*Math.PI/180; return 90 - Math.asin(Math.sin(lat)*Math.sin(decl)+Math.cos(lat)*Math.cos(decl)*Math.cos(ha))*180/Math.PI; }}
-            
             let archPath = `M${{getX(rise)}},90 `; for(let i=Math.ceil(rise); i<=Math.floor(set); i++) archPath+=`L${{getX(i)}},${{getY(i)}} `; archPath+=`L${{getX(set)}},90`;
             
-            // viewBoxを広げ、方位ラベルを強調
-            return `<div style="width:210px;height:130px;border-radius:12px;border:1px solid rgba(129,236,255,0.4);background:rgba(10,14,26,0.95);backdrop-filter:blur(10px);padding:5px;box-shadow:0 0 15px rgba(0,0,0,0.5);">
-                <svg width="200" height="110" viewBox="-30 0 230 110">
+            return `<div style="width:200px;height:130px;border-radius:12px;border:1px solid rgba(129,236,255,0.4);background:rgba(10,14,26,0.95);backdrop-filter:blur(10px);padding:5px;">
+                <svg width="190" height="110" viewBox="-30 0 230 110">
                     <line x1="-30" y1="90" x2="200" y2="90" stroke="#81ecff" opacity="0.4"/>
-                    
-                    <text x="${{getX(6)}}" y="104" fill="#81ecff" font-size="11" font-weight="900" text-anchor="middle">E</text>
-                    <text x="${{getX(12)}}" y="104" fill="#81ecff" font-size="11" font-weight="900" text-anchor="middle">S</text>
-                    <text x="${{getX(18)}}" y="104" fill="#81ecff" font-size="11" font-weight="900" text-anchor="middle">W</text>
-                    
+                    <text x="${{getX(6)}}" y="104" fill="#81ecff" font-size="12" font-weight="900" text-anchor="middle">E</text>
+                    <text x="${{getX(12)}}" y="104" fill="#81ecff" font-size="12" font-weight="900" text-anchor="middle">S</text>
+                    <text x="${{getX(18)}}" y="104" fill="#81ecff" font-size="12" font-weight="900" text-anchor="middle">W</text>
                     <path d="${{archPath}}" fill="none" stroke="#ffaa00" stroke-width="2.5" opacity="${{isNight?0.2:0.8}}"/>
                     <circle cx="${{getX(h)}}" cy="${{isNight?90:getY(h)}}" r="5" fill="#fff" style="filter:drop-shadow(0 0 8px #ffaa00)" opacity="${{isNight?0:1}}"/>
-                    
                     <text x="85" y="75" fill="#81ecff" font-size="26" font-weight="900" text-anchor="middle" font-family="Space Grotesk" style="text-shadow:0 0 15px #81ecff">${{String(h).padStart(2,'0')}}:00</text>
                 </svg>
             </div>`;
@@ -234,46 +241,31 @@ html_app = f"""
             markersLayer.clearLayers();
             document.getElementById('wind-hud').innerHTML = getSunPositionHud(simHour);
             
-            // ☀️ 地図上のオレンジ色の扇形（光の照射範囲）
+            // ☀️ 画面全体へのオレンジ・グラデーション（太陽の方向に合わせる）
             let t = (simHour - 6) / 12;
             let isNight = simHour < 6 || simHour >= 18;
-            if (!isNight) {{
-                // 太陽の方位角を計算（E=90, S=180, W=270）
-                let sunAzimuth = 90 + (t * 180); 
-                
-                // 扇形（ポリゴン）の頂点を作成
-                let points = [[planeLat, planeLng]];
-                let radius = 0.015; // 照射距離
-                for (let i = -20; i <= 20; i += 5) {{
-                    let rad = (sunAzimuth + i - 90) * Math.PI / 180;
-                    points.push([
-                        planeLat + Math.cos(rad) * radius,
-                        planeLng + Math.sin(rad) * radius
-                    ]);
-                }}
-                
-                // オレンジ色の濃薄（扇形）を描画
-                L.polygon(points, {{
-                    color: '#ffaa00',
-                    weight: 0,
-                    fillColor: '#ffaa00',
-                    fillOpacity: 0.2, // ふんわりした濃淡
-                    interactive: false
-                }}).addTo(markersLayer);
+            let overlay = document.getElementById('sun-glow-overlay');
+            
+            if (isNight) {{
+                overlay.style.background = "transparent";
+            }} else {{
+                // 太陽の方角（角度）を計算
+                // 6時(E)=0度, 12時(S)=90度, 18時(W)=180度
+                let angle = t * 180; 
+                // CSSのlinear-gradientに変換（太陽がある方向から光が来るように）
+                overlay.style.background = `linear-gradient(${{angle + 90}}deg, rgba(255, 170, 0, 0.25) 0%, transparent 70%)`;
             }}
 
-            // カメラスポット
             spots.forEach(spot => {{
                 if (filterRwy !== "すべて" && !spot['RWY'].includes(filterRwy)) return;
-                let isSel = (spot['スポット'] === currentSpot['スポット']);
-                let marker = L.marker([spot['緯度'], spot['経度']], {{icon:L.divIcon({{html:getCameraSvg(isSel),className:''}})}}).bindTooltip(spot['スポット']).addTo(markersLayer);
+                let marker = L.marker([spot['緯度'], spot['経度']], {{
+                    icon: L.divIcon({{ html: getCameraSvg(spot['スポット'] === currentSpot['スポット']), className: '' }})
+                }}).bindTooltip(spot['スポット']).addTo(markersLayer);
                 marker.on('click', () => {{ currentSpot=spot; updateUI(); renderMapElements(); }});
             }});
             
-            // 視線ライン
             L.polyline([[currentSpot['緯度'],currentSpot['経度']],[planeLat,planeLng]],{{color:'#81ecff',weight:2,dashArray:'5,10',opacity:0.5}}).addTo(markersLayer);
             
-            // 飛行機
             L.marker([planeLat,planeLng],{{
                 icon:L.divIcon({{
                     html:getPlaneSvg(currentRwy==="16"?156:336),
