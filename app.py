@@ -14,8 +14,18 @@ st.markdown("""
         #MainMenu {visibility: hidden;}
         header {visibility: hidden;}
         footer {visibility: hidden;}
-        .block-container {padding: 0px !important; max-width: 100% !important; overflow: hidden;}
-        iframe {border: none; width: 100vw; height: 100vh;}
+        .block-container {padding: 0px !important; max-width: 100% !important;}
+        
+        /* iframeを画面サイズに強制的に完全固定（iOSのハミ出しバグを防止） */
+        iframe {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            border: none !important;
+            z-index: 99999 !important;
+        }
     </style>
 """, unsafe_allow_html=True)
 
@@ -73,30 +83,37 @@ html_app = f"""
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Manrope:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
         /* 🌌 全体の文字にうっすらとした光のにじみ（70%にトーンダウン） */
-        body {{ 
+/* 🌌 iOSスクロールバグ対策：htmlとbodyのスクロールを完全に殺す */
+        html, body { 
             background-color: #04060d; 
             color: #e2e4f6; 
             font-family: 'Manrope', sans-serif; 
             margin: 0; 
             padding: 0; 
             text-shadow: 0 0 11px rgba(167, 170, 187, 0.4); 
-            height: 100vh; 
-            overflow: hidden; /* 外側のバグるスクロールを殺す */
-        }}
+            height: 100%; 
+            width: 100%;
+            overflow: hidden; 
+            position: fixed;
+        }
 
-        /* 🌌 ドットのみ、前回お気に召した「ちょうどいいサイズ（芯1.5px、間隔35px）」 */
-        .app-container {{
+        /* 🌌 スクロールを許可する大元コンテナ（ここで全て滑らかに動かす） */
+        .app-container {
             background-image: 
                 radial-gradient(circle, rgba(129, 236, 255, 0.9) 0.4px, transparent 1px),
                 radial-gradient(circle, rgba(129, 236, 255, 0.2) 1px, transparent 6px),
                 linear-gradient(to bottom right, #020308, #0a0e1a, #020308); 
             background-size: 35px 35px, 35px 35px, 100% 100%;
-            height: 100vh; /* min-height から height に変更 */
-            overflow-y: auto; /* ここ（内側）だけでスクロールさせる */
-            -webkit-overflow-scrolling: touch; /* スマホ特有の滑らかスクロール魔法 */
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            overflow-y: auto; 
+            -webkit-overflow-scrolling: touch; /* 魔法の滑らかスクロール */
             padding: 1.5rem;
             box-sizing: border-box;
-        }}
+        }
 
         .glass-panel {{
             background: rgba(15, 20, 35, 0.5); 
