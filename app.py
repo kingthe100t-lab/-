@@ -296,10 +296,32 @@ html_app = f"""
             renderMapElements();
         }});
 
+        // ☀️ 時間(simHour)に合わせて太陽の角度と影の向きを計算する関数
+        function getShadowStyle(isGlow) {{
+            // 6時(東)〜18時(西)の半円で太陽が動く軌道を計算
+            let t = (simHour - 6) / 12; 
+            let angle = t * Math.PI;
+            
+            // 夜間(18時以降・6時未満)は太陽の影を落とさず薄くする
+            let isNight = simHour < 6 || simHour >= 18;
+            let distance = isNight ? 0 : 8; // 影の長さ
+            let opacity = isNight ? 0.3 : 0.8; // 影の濃さ
+            
+            // 太陽の反対方向（-cos, -sin）に影を伸ばす
+            let shadowX = -Math.cos(angle) * distance;
+            let shadowY = -Math.sin(angle) * distance;
+            
+            // 選択中のカメラピンなど、自発光（グロー）させたい要素の合成用
+            let glow = isGlow ? "drop-shadow(0 0 8px rgba(129,236,255,0.8)) " : "";
+            
+            return `${{glow}}drop-shadow(${{shadowX}}px ${{shadowY}}px 4px rgba(0,0,0,${{opacity}}))`;
+        }}
+
         function getPlaneSvg(heading) {{
+            let shadowFilter = getShadowStyle(false);
             return `
-            <div class="ghost-marker" style="width: 72px; height: 72px;">
-                <svg width="72" height="72" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="filter: drop-shadow(2px 4px 6px rgba(0,0,0,0.8));">
+            <div class="ghost-marker" style="width: 24px; height: 24px;">
+                <svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="filter: ${{shadowFilter}}; transition: filter 0.3s ease;">
                     <g style="transform: rotate(${{heading}}deg); transform-origin: 12px 12px;">
                         <path d="M21 16v-2l-8-5V3.5C13 2.67 12.33 2 11.5 2S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5L21 16z" fill="#E0E0E0" stroke="#111111" stroke-width="0.5"/>
                     </g>
@@ -309,9 +331,10 @@ html_app = f"""
 
         function getCameraSvg(isSelected) {{
             let color = isSelected ? "#81ecff" : "#444756";
+            let shadowFilter = getShadowStyle(isSelected);
             return `
             <div style="width: 24px; height: 24px; margin-left: -12px; margin-top: -12px;">
-                <svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="filter: drop-shadow(1px 2px 3px rgba(0,0,0,0.5));">
+                <svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="filter: ${{shadowFilter}}; transition: filter 0.3s ease;">
                     <circle cx="12" cy="12" r="11" fill="${{color}}" stroke="#0a0e1a" stroke-width="2"/>
                     <path d="M 8 10 L 9.5 8.5 L 14.5 8.5 L 16 10 L 17 10 A 1 1 0 0 1 18 11 L 18 16 A 1 1 0 0 1 17 17 L 7 17 A 1 1 0 0 1 6 16 L 6 11 A 1 1 0 0 1 7 10 Z" fill="#0a0e1a"/>
                     <circle cx="12" cy="13.5" r="2.5" fill="${{color}}"/>
