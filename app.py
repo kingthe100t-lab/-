@@ -87,7 +87,7 @@ html_app = f"""
         /* 🌌 ドットのみ、前回お気に召した「ちょうどいいサイズ（芯1.5px、間隔35px）」 */
         .app-container {{
             background-image: 
-                radial-gradient(circle, rgba(129, 236, 255, 0.9) 0.8px, transparent 1px),
+                radial-gradient(circle, rgba(129, 236, 255, 0.9) 0.4px, transparent 1px),
                 radial-gradient(circle, rgba(129, 236, 255, 0.2) 1px, transparent 6px),
                 linear-gradient(to bottom right, #020308, #0a0e1a, #020308); 
             background-size: 35px 35px, 35px 35px, 100% 100%;
