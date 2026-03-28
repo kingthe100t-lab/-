@@ -165,8 +165,8 @@ html_app = f"""
             </div>
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1">
-            <div class="lg:col-span-2 flex flex-col gap-4">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1">
+            <div class="lg:col-span-7 flex flex-col gap-4">
                 <div class="flex flex-col md:flex-row gap-4">
                     <div class="glass-panel p-4 flex gap-4 text-sm items-center custom-radio flex-1">
                         <span class="text-[#81ecff] font-bold space-font tracking-widest">🎯 RWY FILTER</span>
@@ -202,7 +202,7 @@ html_app = f"""
                 <div id="map" class="w-full h-[350px] rounded-lg border border-[#81ecff]/30 shadow-[0_0_20px_rgba(0,229,255,0.1)] z-0"></div>
             </div>
 
-            <div class="flex flex-col gap-4">
+            <div class="lg:col-span-5 flex flex-col gap-4">
                 <div class="glass-panel p-5 border-l-4 border-l-[#81ecff]">
                     <div class="text-[#81ecff] space-font tracking-widest text-[10px] mb-1 uppercase">Selected Spot</div>
                     <h3 class="text-2xl font-bold text-white mb-4 space-font" id="spotName">--</h3>
