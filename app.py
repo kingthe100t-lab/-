@@ -342,56 +342,93 @@ html_app = f"""
             </div>`;
         }}
 function getSunPositionHud(simHour) {{
-            // サンサーベイヤー風のAR天球アーチを構築
-            let t = (simHour - 6) / 12; 
-            let angle = t * Math.PI;
+            // --- 🌍 本格的な太陽軌道計算（福岡空港：北緯33.58度） ---
+            let date = new Date();
+            if (simDay === "明日") date.setDate(date.getDate() + 1);
             
-            // 夜間(18時以降・6時未満)はアーチを暗くし、太陽を非表示に
-            let isNight = simHour < 6 || simHour >= 18;
-            let archOpacity = isNight ? 0.3 : 0.6;
+            // 元日からの経過日数を算出
+            let start = new Date(date.getFullYear(), 0, 0);
+            let dayOfYear = Math.floor((date - start) / (1000 * 60 * 60 * 24));
+            
+            // 太陽赤緯（δ）と福岡の緯度（ラジアン）
+            let declination = 23.45 * Math.sin((360 / 365) * (dayOfYear - 81) * Math.PI / 180) * Math.PI / 180;
+            let lat = 33.58 * Math.PI / 180; 
+            
+            // 日の出・日の入りの時間（時角）を正確に計算
+            let cosH0 = -Math.tan(lat) * Math.tan(declination);
+            cosH0 = Math.max(-1, Math.min(1, cosH0)); 
+            let H0Deg = Math.acos(cosH0) * 180 / Math.PI;
+            let sunriseHour = 12 - (H0Deg / 15);
+            let sunsetHour = 12 + (H0Deg / 15);
+
+            let isNight = simHour < sunriseHour || simHour > sunsetHour;
+            let archOpacity = isNight ? 0.2 : 0.8;
             let sunOpacity = isNight ? 0.0 : 1.0;
-            
-            // 太陽の軌跡（黄金のアーチとシアンのアーチ）
-            const arch = `
-                <path d="M10,90 Q70,0 130,90" fill="none" stroke="#ffaa00" stroke-width="1" opacity="${{archOpacity}}" />
-                <path d="M20,90 Q70,0 120,90" fill="none" stroke="#81ecff" stroke-width="1" opacity="${{archOpacity * 0.8}}" />
-            `;
-            
-            // 時間目盛り (7h〜22h)
+
+            // --- 📐 SVG描画用の座標計算マッピング ---
+            // X軸: 12時を中央(70)とし、1時間あたり12px動かす（表示幅内に綺麗に収める）
+            function getX(h) {{ return 70 + (h - 12) * 12; }}
+            // Y軸: 太陽高度（仰角）を計算してY座標に変換
+            function getY(h) {{
+                let hourAngle = 15 * (h - 12) * Math.PI / 180;
+                let sinAlpha = Math.sin(lat) * Math.sin(declination) + Math.cos(lat) * Math.cos(declination) * Math.cos(hourAngle);
+                let alphaDeg = Math.asin(sinAlpha) * 180 / Math.PI;
+                return 90 - alphaDeg; // 高度0度をY=90(地平線)、高度角をそのままYのマイナスにする
+            }}
+
+            // 正確な太陽軌道（アーチ）のパスを生成
+            let archPath = \`M${{getX(sunriseHour)}},90 \`;
+            for(let h = Math.ceil(sunriseHour); h <= Math.floor(sunsetHour); h++) {{
+                archPath += \`L${{getX(h)}},${{getY(h)}} \`;
+            }}
+            archPath += \`L${{getX(sunsetHour)}},90\`;
+
+            const arch = \`
+                <path d="${{archPath}}" fill="none" stroke="#ffaa00" stroke-width="1.5" opacity="${{archOpacity}}" />
+                <path d="${{archPath}}" fill="none" stroke="#ffaa00" stroke-width="4" opacity="${{archOpacity * 0.3}}" style="filter: blur(2px);" />
+            \`;
+
+            // 目盛り (日の出〜日の入りの範囲のみ描画)
             let ticks = '';
-            for (let h = 7; h <= 22; h++) {{
-                let th = (h - 6) / 12;
-                let tx = 10 + 120 * th; // 地平線に沿って配置
-                let ty = 90 - 90 * Math.sin(th * Math.PI); // アーチに沿って配置
-                if (h % 2 === 0) {{ // 2時間ごとの目盛り
-                    ticks += `<line x1="${{tx}}" y1="${{ty}}" x2="${{tx}}" y2="${{ty + 3}}" stroke="#a7aabb" stroke-width="0.5" opacity="0.7" />`;
-                    ticks += `<text x="${{tx}}" y="${{ty + 10}}" fill="#a7aabb" font-size="7" text-anchor="middle" font-family="Manrope" opacity="0.7">${{h}}h</text>`;
-                }}
+            for (let h = Math.ceil(sunriseHour); h <= Math.floor(sunsetHour); h += 2) {{
+                let tx = getX(h);
+                let ty = getY(h);
+                ticks += \`<line x1="${{tx}}" y1="${{ty}}" x2="${{tx}}" y2="${{ty + 4}}" stroke="#a7aabb" stroke-width="1" opacity="0.8" />\`;
+                ticks += \`<text x="${{tx}}" y="${{ty + 12}}" fill="#a7aabb" font-size="8" text-anchor="middle" font-family="Manrope" opacity="0.9">${{h}}h</text>\`;
             }}
             
             // 現在の太陽の位置
-            let sx = 10 + 120 * t;
-            let sy = 90 - 90 * Math.sin(angle);
-            
-            // 現在の太陽と時間
-            const sunAndTime = isNight ? '' : `
-                <circle cx="${{sx}}" cy="${{sy}}" r="4" fill="#81ecff" style="filter: drop-shadow(0 0 6px #81ecff);" opacity="${{sunOpacity}}" />
-                
-                <text x="70" y="80" fill="#81ecff" font-size="20" font-weight="900" text-anchor="middle" font-family="Space Grotesk" style="filter: drop-shadow(0 0 8px rgba(129,236,255,0.7));">${{String(simHour).padStart(2, '0')}}:00</text>
-                <text x="70" y="90" fill="#a7aabb" font-size="8" text-anchor="middle" font-family="Manrope" opacity="0.8">JST</text>
-            `;
-            
-            return `
-            <div style="width: 140px; height: 120px; border-radius: 8px; border: 1px solid rgba(129, 236, 255, 0.3); background: rgba(10, 14, 26, 0.7); padding: 8px; font-family: 'Manrope', sans-serif; z-index: 10;">
-                <svg width="140" height="100" viewBox="0 0 140 100" style="filter: drop-shadow(0 0 8px rgba(129,236,255,0.7));">
-                    <line x1="0" y1="90" x2="140" y2="90" stroke="#81ecff" stroke-width="1" opacity="0.4" />
+            let sx = getX(simHour);
+            let sy = isNight ? 90 : getY(simHour);
+
+            const sunAndTime = isNight ? '' : \`
+                <circle cx="${{sx}}" cy="${{sy}}" r="4" fill="#ffffff" style="filter: drop-shadow(0 0 6px #ffaa00);" opacity="${{sunOpacity}}" />
+                <circle cx="${{sx}}" cy="${{sy}}" r="1.5" fill="#ffaa00" opacity="${{sunOpacity}}" />
+            \`;
+
+            // 日の出・日の入りの文字列フォーマット (例: 5:32)
+            let sunriseStr = Math.floor(sunriseHour) + ":" + String(Math.round((sunriseHour%1)*60)).padStart(2,'0');
+            let sunsetStr = Math.floor(sunsetHour) + ":" + String(Math.round((sunsetHour%1)*60)).padStart(2,'0');
+
+            return \`
+            <div style="width: 170px; height: 130px; border-radius: 8px; border: 1px solid rgba(129, 236, 255, 0.3); background: rgba(10, 14, 26, 0.85); backdrop-filter: blur(8px); padding: 8px; font-family: 'Manrope', sans-serif; z-index: 10; position: relative; overflow: hidden;">
+                <svg width="170" height="110" viewBox="-10 0 160 110" style="position: absolute; top: 8px; left: 0;">
+                    <line x1="-20" y1="90" x2="180" y2="90" stroke="#81ecff" stroke-width="1" opacity="0.4" />
+                    
+                    <text x="${{getX(sunriseHour)}}" y="100" fill="#ffaa00" font-size="7" text-anchor="middle" opacity="0.8">${{sunriseStr}}</text>
+                    <text x="${{getX(sunsetHour)}}" y="100" fill="#ffaa00" font-size="7" text-anchor="middle" opacity="0.8">${{sunsetStr}}</text>
                     
                     ${{arch}}
                     ${{ticks}}
                     ${{sunAndTime}}
                 </svg>
+                
+                <div style="position: absolute; bottom: 8px; width: 100%; text-align: center; left: 0; pointer-events: none;">
+                    <div style="color: #81ecff; font-size: 24px; font-weight: 900; font-family: 'Space Grotesk'; text-shadow: 0 0 10px rgba(129,236,255,0.7); line-height: 1;">${{String(simHour).padStart(2, '0')}}:00</div>
+                    <div style="color: #a7aabb; font-size: 9px; opacity: 0.8; margin-top: 2px;">JST</div>
+                </div>
             </div>
-            `;
+            \`;
         }}
         function renderMapElements() {{
             markersLayer.clearLayers();
