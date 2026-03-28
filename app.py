@@ -72,40 +72,67 @@ html_app = f"""
     <script src="https://cdn.jsdelivr.net/npm/leaflet-ant-path@1.3.0/dist/leaflet-ant-path.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Manrope:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        body {{ background-color: #0a0e1a; color: #e2e4f6; font-family: 'Manrope', sans-serif; margin: 0; padding: 0; }}
-        .app-container {{
-            background-image: radial-gradient(circle, rgba(167, 170, 187, 0.15) 1px, transparent 1px), linear-gradient(to bottom right, #0a0e1a, #0e1320, #0a0e1a);
-            background-size: 20px 20px, 100% 100%;
+        /* 🌌 全体の文字にうっすらとした光のにじみを追加 */
+        body { 
+            background-color: #04060d; /* 宇宙の深淵を表現するため、背景をさらに漆黒に調整 */
+            color: #e2e4f6; 
+            font-family: 'Manrope', sans-serif; 
+            margin: 0; 
+            padding: 0; 
+            text-shadow: 0 0 8px rgba(167, 170, 187, 0.3); 
+        }
+
+        /* 🌌 ドットの大型化と発光効果（芯＋ぼんやりした光層のダブルレイヤー） */
+        .app-container {
+            background-image: 
+                radial-gradient(circle, rgba(129, 236, 255, 0.9) 1.5px, transparent 3px), /* 光るドットの芯 */
+                radial-gradient(circle, rgba(129, 236, 255, 0.2) 6px, transparent 12px),  /* ぼんやりとしたグロー */
+                linear-gradient(to bottom right, #020308, #0a0e1a, #020308); /* 深い宇宙のグラデーション */
+            background-size: 35px 35px, 35px 35px, 100% 100%; /* ドットの間隔を広くして星空感を演出 */
             min-height: 100vh;
             padding: 1.5rem;
             box-sizing: border-box;
-        }}
-        .glass-panel {{
-            background: rgba(32, 37, 55, 0.4);
+        }
+
+        .glass-panel {
+            background: rgba(15, 20, 35, 0.5); /* パネルを少し暗くして発光を目立たせる */
             backdrop-filter: blur(20px);
-            border-top: 1px solid rgba(129, 236, 255, 0.15);
+            border-top: 1px solid rgba(129, 236, 255, 0.2);
             border-bottom: 1px solid rgba(129, 236, 255, 0.05);
             border-radius: 8px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-        }}
-        .neon-text {{ text-shadow: 0 0 20px rgba(0,229,255,0.3); font-family: 'Space Grotesk', sans-serif; color: #0088ff; }}
-        .space-font {{ font-family: 'Space Grotesk', sans-serif; }}
-        .cyber-btn {{
-            background: linear-gradient(to right, #81ecff, #00e3fd); color: #004d57; font-family: 'Space Grotesk', sans-serif; font-weight: 700;
-            text-transform: uppercase; letter-spacing: 0.1em; border: none; box-shadow: 0 0 15px rgba(129,236,255,0.3); cursor: pointer; transition: transform 0.2s;
-        }}
-        .cyber-btn:hover {{ transform: scale(1.02); }}
+            box-shadow: 0 8px 32px rgba(0, 229, 255, 0.1);
+        }
         
-        input[type=range] {{ -webkit-appearance: none; background: transparent; width: 100%; outline: none; }}
-        input[type=range]::-webkit-slider-thumb {{
-            -webkit-appearance: none; height: 16px; width: 16px; border-radius: 50%; background: #81ecff; cursor: pointer; box-shadow: 0 0 10px #81ecff; margin-top: -6px;
-        }}
-        input[type=range]::-webkit-slider-runnable-track {{
+        /* 🌌 見出しや専用フォントに強力なネオングローを追加 */
+        .neon-text { 
+            text-shadow: 0 0 15px rgba(0,229,255,0.6), 0 0 30px rgba(0,229,255,0.3); 
+            font-family: 'Space Grotesk', sans-serif; 
+            color: #81ecff; 
+        }
+        .space-font { 
+            font-family: 'Space Grotesk', sans-serif; 
+            text-shadow: 0 0 10px rgba(129, 236, 255, 0.5); /* 文字がフワッと光る */
+        }
+        
+        .cyber-btn {
+            background: linear-gradient(to right, #81ecff, #00e3fd); color: #004d57; font-family: 'Space Grotesk', sans-serif; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 0.1em; border: none; box-shadow: 0 0 20px rgba(129,236,255,0.5); cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .cyber-btn:hover { 
+            transform: scale(1.02); 
+            box-shadow: 0 0 30px rgba(129,236,255,0.8); /* ホバー時にさらに強く発光 */
+        }
+        
+        input[type=range] { -webkit-appearance: none; background: transparent; width: 100%; outline: none; }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none; height: 16px; width: 16px; border-radius: 50%; background: #81ecff; cursor: pointer; box-shadow: 0 0 15px #81ecff; margin-top: -6px;
+        }
+        input[type=range]::-webkit-slider-runnable-track {
             width: 100%; height: 4px; cursor: pointer; background: rgba(129, 236, 255, 0.2); border-radius: 2px;
-        }}
-        .leaflet-container {{ background: #0a0e1a; font-family: 'Manrope', sans-serif; }}
-        .ghost-marker {{ pointer-events: none !important; background: transparent !important; border: none !important; margin-left: -12px !important; margin-top: -12px !important; }}
-        .custom-radio input[type="radio"] {{ accent-color: #81ecff; cursor: pointer; }}
+        }
+        .leaflet-container { background: #0a0e1a; font-family: 'Manrope', sans-serif; }
+        .ghost-marker { pointer-events: none !important; background: transparent !important; border: none !important; margin-left: -12px !important; margin-top: -12px !important; }
+        .custom-radio input[type="radio"] { accent-color: #81ecff; cursor: pointer; filter: drop-shadow(0 0 5px #81ecff); }
     </style>
 </head>
 <body>
