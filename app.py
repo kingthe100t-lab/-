@@ -182,9 +182,9 @@ html_app = f"""
     <div class="app-container">
     <div class="max-w-[1400px] mx-auto flex flex-col gap-6 w-full">
         <h1 class="text-3xl font-black flex items-center gap-4 neon-text uppercase m-0">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M21 16v-2l-8-5V3.5C13 2.67 12.33 2 11.5 2S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5L21 16z" fill="#0088ff"/>
-            </svg>
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="filter: drop-shadow(0 0 10px rgba(0, 229, 255, 0.6)) drop-shadow(0 0 20px rgba(0, 229, 255, 0.4));">
+  <path d="M21 16v-2l-8-5V3.5C13 2.67 12.33 2 11.5 2S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5L21 16z" fill="#81ecff"/>
+</svg>
             SKY-DIRECTOR PRO
         </h1>
         
