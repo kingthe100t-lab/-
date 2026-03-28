@@ -84,6 +84,7 @@ html_app = f"""
             transition: background 0.5s ease;
             mix-blend-mode: screen;
             z-index: 400;
+            opacity: 0.8; /* レイヤー自体の透明度を調整 */
         }}
         /* ▲ ここまで ▲ */
 
@@ -253,7 +254,7 @@ html_app = f"""
                 // 6時(E)=0度, 12時(S)=90度, 18時(W)=180度
                 let angle = t * 180; 
                 // CSSのlinear-gradientに変換（太陽がある方向から光が来るように）
-                overlay.style.background = `linear-gradient(${{angle + 90}}deg, rgba(255, 170, 0, 0.25) 0%, transparent 70%)`;
+                overlay.style.background = `linear-gradient(${{angle + 90}}deg, rgba(255, 140, 0, 0.6) 0%, rgba(255, 140, 0, 0.1) 50%, transparent 100%)`;
             }}
 
             spots.forEach(spot => {{
