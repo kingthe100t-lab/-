@@ -83,8 +83,8 @@ html_app = f"""
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Manrope:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
         /* 🌌 全体の文字にうっすらとした光のにじみ（70%にトーンダウン） */
-/* 🌌 iOSスクロールバグ対策：htmlとbodyのスクロールを完全に殺す */
-        html, body { 
+        /* 🌌 iOSスクロールバグ対策：htmlとbodyのスクロールを完全に殺す */
+        html, body {{ 
             background-color: #04060d; 
             color: #e2e4f6; 
             font-family: 'Manrope', sans-serif; 
@@ -95,10 +95,10 @@ html_app = f"""
             width: 100%;
             overflow: hidden; 
             position: fixed;
-        }
+        }}
 
         /* 🌌 スクロールを許可する大元コンテナ（ここで全て滑らかに動かす） */
-        .app-container {
+        .app-container {{
             background-image: 
                 radial-gradient(circle, rgba(129, 236, 255, 0.9) 0.4px, transparent 1px),
                 radial-gradient(circle, rgba(129, 236, 255, 0.2) 1px, transparent 6px),
@@ -113,8 +113,7 @@ html_app = f"""
             -webkit-overflow-scrolling: touch; /* 魔法の滑らかスクロール */
             padding: 1.5rem;
             box-sizing: border-box;
-        }
-
+        }}
         .glass-panel {{
             background: rgba(15, 20, 35, 0.5); 
             backdrop-filter: blur(20px);
