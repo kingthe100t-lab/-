@@ -8,15 +8,13 @@ from scipy.interpolate import interp1d
 # --- ⚙️ ページ基本設定 ---
 st.set_page_config(layout="wide", page_title="SKY-DIRECTOR PRO", initial_sidebar_state="collapsed")
 
-# ▼ 魔法の呪文：Streamlit特有の余白やメニューを「完全に消去」し、純粋なWebキャンバス化する
+# ▼ iOSのスクロールバグ対策 & フルスクリーン対応
 st.markdown("""
     <style>
         #MainMenu {visibility: hidden;}
         header {visibility: hidden;}
         footer {visibility: hidden;}
         .block-container {padding: 0px !important; max-width: 100% !important;}
-        
-        /* iframeを画面サイズに強制的に完全固定（iOSのハミ出しバグを防止） */
         iframe {
             position: fixed !important;
             top: 0 !important;
@@ -29,7 +27,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- 📦 データとAPIキーの読み込み ---
+# --- 📦 データ読み込み ---
 @st.cache_data
 def load_data():
     df = pd.read_csv("spots.csv")
@@ -37,20 +35,12 @@ def load_data():
     df["経度"] = pd.to_numeric(df["経度"], errors="coerce")
     return df.dropna(subset=["緯度", "経度"])
 
-try:
-    df_spots = load_data()
-except FileNotFoundError:
-    st.error("🚨 エラー: GitHubに `spots.csv` が見つかりません！")
-    st.stop()
-    
-try:
-    api_key = st.secrets["GEMINI_API_KEY"]
-except:
-    api_key = ""
+df_spots = load_data()
+api_key = st.secrets.get("GEMINI_API_KEY", "")
 
-# --- ✈️ アプローチ軌跡の事前計算（Pythonで計算してJSに渡す） ---
-rwy16_pos = np.array([33.5955, 130.4439])
-rwy34_pos = np.array([33.5750, 130.4581])
+# --- ✈️ 軌跡計算 (Cubicスプライン) ---
+rwy16_pos = [33.5955, 130.4439]
+rwy34_pos = [33.5750, 130.4581]
 
 def create_smooth_path(points, num_points=120):
     lats, lons = [p[0] for p in points], [p[1] for p in points]
@@ -61,438 +51,168 @@ def create_smooth_path(points, num_points=120):
     t /= t[-1] 
     return [[float(lat), float(lon)] for lat, lon in zip(interp1d(t, lats, kind='cubic')(np.linspace(0, 1, num_points)), interp1d(t, lons, kind='cubic')(np.linspace(0, 1, num_points)))]
 
-path_16 = create_smooth_path([[33.720, 130.340], [33.660, 130.390], [33.620, 130.425], [rwy16_pos[0], rwy16_pos[1]]], 50)
+# 🛬 アプローチ
+path_16 = create_smooth_path([[33.720, 130.340], [33.660, 130.390], [33.620, 130.425], rwy16_pos], 50)
 faf_pos = [33.550558624462184, 130.47508525096282]
-curve_points = [
-    [33.6800, 130.3000], [33.6200, 130.3500], [33.5700, 130.3950], 
-    [33.5400, 130.4150], [33.5180, 130.4400], [33.5250, 130.4650], 
-    faf_pos
-]
-path_34 = create_smooth_path(curve_points, 120) + [faf_pos, [rwy34_pos[0], rwy34_pos[1]]]
-# 🛫 離陸（ディパーチャー）ルート
-dep_curve_16 = [
-    [rwy34_pos[0], rwy34_pos[1]], # RWY16離陸（南へ向かって飛ぶ）
-    [33.57113402404754, 130.46083622611403], 
-    [33.56545248920149, 130.46517714220687], # ←追加：2点目と3点目の「ど真ん中」の座標
-    [33.55377778149313, 130.47464395170465]
-]
-dep_path_16 = create_smooth_path(dep_curve_16, 60)
+path_34 = create_smooth_path([[33.6800, 130.3000], [33.6200, 130.3500], [33.5700, 130.3950], [33.5400, 130.4150], [33.5180, 130.4400], [33.5250, 130.4650], faf_pos], 120) + [faf_pos, rwy34_pos]
 
-dep_curve_34 = [
-    [rwy16_pos[0], rwy16_pos[1]], # RWY34離陸（北へ向かって海へ抜ける）
-    [33.60349227065672, 130.4388795538824],
-    [33.61236625832645, 130.43230726779566],    # ←追加：2点目と3点目の「ど真ん中」の座標
-    [33.63068902679922, 130.41857964050828]
-]
-dep_path_34 = create_smooth_path(dep_curve_34, 60)
+# 🛫 離陸 (マスター指定座標 + 4点確保の中継点)
+dep_path_16 = create_smooth_path([rwy34_pos, [33.579172885448706, 130.45531520290436], [33.56430, 130.46693], [33.54943579810327, 130.47855674420796]], 60)
+dep_path_34 = create_smooth_path([rwy16_pos, [33.59444398997148, 130.44502712636253], [33.61313, 130.43086], [33.63183125340424, 130.41670130435546]], 60)
 
-# --- 🌐 超・本格的フロントエンド（HTML/JS/CSS）の構築 ---
+# --- 🌐 フロントエンド構築 ---
 html_app = f"""
 <!DOCTYPE html>
 <html lang="ja">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="theme-color" content="#04060d">
-    <meta name="apple-mobile-web-app-title" content="SKY-DIRECTOR">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/leaflet-ant-path@1.3.0/dist/leaflet-ant-path.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Manrope:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-<style>
-        /* 🌌 全体の文字にうっすらとした光のにじみ（70%にトーンダウン） */
-        /* 🌌 iOSスクロールバグ対策：htmlとbodyのスクロールを完全に殺す */
-        html, body {{ 
-            background-color: #04060d; 
-            color: #e2e4f6; 
-            font-family: 'Manrope', sans-serif; 
-            margin: 0; 
-            padding: 0; 
-            text-shadow: 0 0 11px rgba(167, 170, 187, 0.4); 
-            height: 100%; 
-            width: 100%;
-            overflow: hidden; 
-            position: fixed;
-        }}
-
-        /* 🌌 スクロールを許可する大元コンテナ（ここで全て滑らかに動かす） */
-        .app-container {{
-            background-image: 
-                radial-gradient(circle, rgba(129, 236, 255, 0.9) 0.4px, transparent 1px),
-                radial-gradient(circle, rgba(129, 236, 255, 0.2) 1px, transparent 6px),
-                linear-gradient(to bottom right, #020308, #0a0e1a, #020308); 
-            background-size: 35px 35px, 35px 35px, 100% 100%;
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            overflow-y: auto; 
-            -webkit-overflow-scrolling: touch; /* 魔法の滑らかスクロール */
-            padding: 1.5rem;
-            box-sizing: border-box;
-        }}
-        .glass-panel {{
-            background: rgba(15, 20, 35, 0.5); 
-            backdrop-filter: blur(20px);
-            border-top: 1px solid rgba(129, 236, 255, 0.3);
-            border-bottom: 1px solid rgba(129, 236, 255, 0.1);
-            border-radius: 8px;
-            box-shadow: 0 8px 22px rgba(0, 229, 255, 0.15); /* パネルのグローを70%に */
-        }}
-        
-        /* 🌌 見出しや専用フォントのネオングロー（70%にトーンダウン） */
-        .neon-text {{ 
-            text-shadow: 0 0 42px rgba(0,229,255,0.55), 0 0 42px rgba(0,229,255,0.35); 
-            font-family: 'Space Grotesk', sans-serif; 
-            color: #81ecff; 
-        }}
-        .space-font {{ 
-            font-family: 'Space Grotesk', sans-serif; 
-            text-shadow: 0 0 14px rgba(129, 236, 255, 0.55); 
-        }}
-        
-        /* 🌌 ボタンやスライダーの光（70%にトーンダウン） */
-        .cyber-btn {{
-            background: linear-gradient(to right, #81ecff, #00e3fd); color: #004d57; font-family: 'Space Grotesk', sans-serif; font-weight: 700;
-            text-transform: uppercase; letter-spacing: 0.1em; border: none; 
-            box-shadow: 0 0 56px rgba(129,236,255,0.5); 
-            cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;
-        }}
-        .cyber-btn:hover {{ 
-            transform: scale(1.02); 
-            box-shadow: 0 0 56px rgba(129,236,255,0.7); 
-        }}
-        
-        input[type=range] {{ -webkit-appearance: none; background: transparent; width: 100%; outline: none; }}
-        input[type=range]::-webkit-slider-thumb {{
-            -webkit-appearance: none; height: 16px; width: 16px; border-radius: 50%; background: #81ecff; cursor: pointer; 
-            box-shadow: 0 0 21px #81ecff; 
-            margin-top: -6px;
-        }}
-        input[type=range]::-webkit-slider-runnable-track {{
-            width: 100%; height: 4px; cursor: pointer; background: rgba(129, 236, 255, 0.2); border-radius: 2px;
-            box-shadow: 0 0 7px rgba(129, 236, 255, 0.2); 
-        }}
-        .leaflet-container {{ background: #0a0e1a; font-family: 'Manrope', sans-serif; z-index: 1; outline: none !important; -webkit-tap-highlight-color: transparent !important; }}
-        /* ▼ 追加：地図の中にある「すべて」の要素のフォーカス枠とタップ色を強制無効化 */
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@700&family=Manrope:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        html, body {{ background: #04060d; color: #e2e4f6; font-family: 'Manrope', sans-serif; margin: 0; padding: 0; height: 100%; overflow: hidden; position: fixed; width: 100%; }}
+        .app-container {{ position: absolute; inset: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 1.5rem; background: radial-gradient(circle at center, #0a0e1a 0%, #020308 100%); }}
+        .glass-panel {{ background: rgba(15, 20, 35, 0.6); backdrop-filter: blur(20px); border: 1px solid rgba(129, 236, 255, 0.2); border-radius: 12px; }}
+        .neon-text {{ color: #81ecff; text-shadow: 0 0 15px rgba(129,236,255,0.6); font-family: 'Space Grotesk', sans-serif; }}
+        .cyber-btn {{ background: linear-gradient(90deg, #81ecff, #00e3fd); color: #004d57; font-weight: 700; border-radius: 6px; }}
+        .leaflet-container {{ background: #0a0e1a !important; outline: none !important; }}
         .leaflet-container * {{ outline: none !important; -webkit-tap-highlight-color: transparent !important; }}
-        .ghost-marker {{ pointer-events: none !important; background: transparent !important; border: none !important; margin-left: -12px !important; margin-top: -12px !important; }}
-        .custom-radio input[type="radio"] {{ accent-color: #81ecff; cursor: pointer; filter: drop-shadow(0 0 7px #81ecff); }} 
+        input[type=range] {{ -webkit-appearance: none; background: rgba(129,236,255,0.2); height: 4px; border-radius: 2px; width: 100%; }}
+        input[type=range]::-webkit-slider-thumb {{ -webkit-appearance: none; height: 18px; width: 18px; border-radius: 50%; background: #81ecff; box-shadow: 0 0 10px #81ecff; cursor: pointer; }}
     </style>
 </head>
 <body>
     <div class="app-container">
-    <div class="max-w-[1400px] mx-auto flex flex-col gap-6 w-full">
-        <h1 class="text-3xl font-black flex items-center gap-4 neon-text uppercase m-0">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="filter: drop-shadow(0 0 10px rgba(0, 229, 255, 0.6)) drop-shadow(0 0 20px rgba(0, 229, 255, 0.4));">
-  <path d="M21 16v-2l-8-5V3.5C13 2.67 12.33 2 11.5 2S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5L21 16z" fill="#81ecff"/>
-</svg>
-            SKY-DIRECTOR PRO
-        </h1>
-        
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1">
-            <div class="lg:col-span-7 flex flex-col gap-4">
-                <div class="flex flex-col md:flex-row gap-4">
-                    <div class="glass-panel p-4 flex gap-4 text-sm items-center custom-radio flex-1">
-                        <span class="text-[#81ecff] font-bold space-font tracking-widest">🎯 RWY FILTER</span>
-                        <label class="flex items-center gap-1"><input type="radio" name="rwy" value="すべて" checked onchange="changeFilter(this.value)"> すべて</label>
-                        <label class="flex items-center gap-1"><input type="radio" name="rwy" value="16" onchange="changeFilter(this.value)"> 16</label>
-                        <label class="flex items-center gap-1"><input type="radio" name="rwy" value="34" onchange="changeFilter(this.value)"> 34</label>
-                    </div>
-                    <div class="glass-panel p-4 flex gap-6 text-sm flex-1">
-                        <div class="custom-radio">
-                            <span class="text-[#81ecff] font-bold block mb-2 space-font tracking-widest">📅 予定日</span>
-                            <div class="flex gap-4">
-                                <label class="flex items-center gap-1"><input type="radio" name="day" value="本日" checked onchange="changeDay(this.value)"> 本日</label>
-                                <label class="flex items-center gap-1"><input type="radio" name="day" value="明日" onchange="changeDay(this.value)"> 明日</label>
+        <div class="max-w-[1400px] mx-auto flex flex-col gap-6 w-full">
+            <h1 class="text-3xl font-black flex items-center gap-4 neon-text uppercase">
+                <svg width="32" height="32" viewBox="0 0 24 24" style="filter: drop-shadow(0 0 8px #81ecff);"><path d="M21 16v-2l-8-5V3.5C13 2.67 12.33 2 11.5 2S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5L21 16z" fill="#81ecff"/></svg>
+                SKY-DIRECTOR PRO
+            </h1>
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <div class="lg:col-span-7 flex flex-col gap-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="glass-panel p-4 flex items-center gap-4">
+                            <span class="text-[#81ecff] text-xs font-bold tracking-widest">RWY FILTER</span>
+                            <div class="flex gap-3 text-sm">
+                                <label><input type="radio" name="rwy" value="すべて" checked onchange="changeFilter(this.value)"> ALL</label>
+                                <label><input type="radio" name="rwy" value="16" onchange="changeFilter(this.value)"> 16</label>
+                                <label><input type="radio" name="rwy" value="34" onchange="changeFilter(this.value)"> 34</label>
                             </div>
                         </div>
-                        <div class="flex-1 pr-2">
-                            <span class="text-[#81ecff] font-bold block mb-2 space-font tracking-widest flex justify-between">
-                                <span>☀️ タイムライン</span>
-                                <span id="hourVal" class="text-white">12:00</span>
-                            </span>
+                        <div class="glass-panel p-4 flex flex-col gap-2">
+                            <div class="flex justify-between text-xs text-[#81ecff] font-bold"><span>TIMELINE</span><span id="hourVal">12:00</span></div>
                             <input type="range" min="7" max="22" value="12" oninput="changeHourLive(this.value)" onchange="changeHour(this.value)">
                         </div>
                     </div>
-                </div>
-
-                <div class="glass-panel p-4 grid grid-cols-4 gap-2 text-center text-xs space-font tracking-widest">
-                    <div><div class="text-[#a7aabb] mb-1">風向</div><div class="text-xl text-white font-bold" id="wDir">--</div></div>
-                    <div><div class="text-[#a7aabb] mb-1">風速</div><div class="text-xl text-white font-bold" id="wSpd">--</div></div>
-                    <div><div class="text-[#a7aabb] mb-1">運用滑走路</div><div class="text-[#00e3fd] text-xl font-bold" id="cRwy">--</div></div>
-                    <div><div class="text-[#a7aabb] mb-1">予定日時</div><div class="text-xl text-white font-bold" id="cTime">--</div></div>
-                </div>
-
-                <div class="relative w-full h-[350px] lg:h-[600px]">
-                        <div id="map" class="absolute inset-0 rounded-lg border border-[#81ecff]/30 shadow-[0_0_20px_rgba(0,229,255,0.1)]"></div>
+                    <div class="glass-panel p-4 grid grid-cols-4 gap-2 text-center text-[10px] tracking-tighter">
+                        <div><div class="text-[#a7aabb]">風向</div><div class="text-lg font-bold" id="wDir">--</div></div>
+                        <div><div class="text-[#a7aabb]">風速</div><div class="text-lg font-bold" id="wSpd">--</div></div>
+                        <div><div class="text-[#a7aabb]">運用滑走路</div><div class="text-lg font-bold text-[#00e3fd]" id="cRwy">--</div></div>
+                        <div><div class="text-[#a7aabb]">予定</div><div class="text-lg font-bold" id="cTime">--</div></div>
+                    </div>
+                    <div class="relative w-full h-[400px] lg:h-[600px]">
+                        <div id="map" class="absolute inset-0 rounded-xl border border-[#81ecff]/30 shadow-2xl"></div>
                         <div id="wind-hud" class="absolute bottom-6 left-6 z-[400] pointer-events-none"></div>
-                </div>
-            </div>
-
-            <div class="lg:col-span-5 flex flex-col gap-4">
-                <div class="glass-panel p-5 border-l-4 border-l-[#81ecff]">
-                    <div class="text-[#81ecff] space-font tracking-widest text-[10px] mb-1 uppercase">Selected Spot</div>
-                    <h3 class="text-2xl font-bold text-white mb-4 space-font" id="spotName">--</h3>
-                    <div class="text-sm text-[#e2e4f6] space-y-3">
-                        <div><strong class="text-[#a7aabb] space-font tracking-widest block text-xs mb-1">📝 特徴</strong> <span id="spotDesc" class="leading-relaxed">--</span></div>
-                        <div class="grid grid-cols-2 gap-2 mt-4">
-                            <div><strong class="text-[#a7aabb] space-font tracking-widest block text-xs mb-1">🕒 ベスト時間</strong> <span id="spotTime">--</span></div>
-                            <div><strong class="text-[#a7aabb] space-font tracking-widest block text-xs mb-1">📷 焦点距離</strong> <span id="spotLens">--</span></div>
-                        </div>
                     </div>
                 </div>
-
-                <div class="glass-panel p-5 flex flex-col gap-4 flex-1">
-                    <h3 class="text-[#81ecff] font-bold text-lg flex items-center gap-2 space-font tracking-widest">🤖 TACTICAL A.I.</h3>
-                    <button class="cyber-btn w-full py-3 rounded" onclick="requestBriefing()">⚡ ブリーフィングをリクエスト</button>
-                    <div id="ai-briefing" class="text-sm text-[#e2e4f6] p-4 bg-[#0a0e1a]/80 rounded border border-[#81ecff]/20 flex-1 overflow-y-auto whitespace-pre-wrap leading-relaxed min-h-[300px]">システム・スタンバイ...</div>
+                <div class="lg:col-span-5 flex flex-col gap-4">
+                    <div class="glass-panel p-6 border-l-4 border-[#81ecff]">
+                        <div class="text-[#81ecff] text-[10px] font-bold tracking-widest uppercase mb-1">Spot Analysis</div>
+                        <h3 class="text-2xl font-bold mb-4" id="spotName">--</h3>
+                        <p id="spotDesc" class="text-sm leading-relaxed mb-4 text-[#e2e4f6]">--</p>
+                        <div class="grid grid-cols-2 gap-4 text-xs">
+                            <div><span class="text-[#a7aabb] block">BEST TIME</span><span id="spotTime">--</span></div>
+                            <div><span class="text-[#a7aabb] block">FOCAL LENGTH</span><span id="spotLens">--</span></div>
+                        </div>
+                    </div>
+                    <div class="glass-panel p-6 flex-1 flex flex-col gap-4 min-h-[300px]">
+                        <h3 class="text-[#81ecff] font-bold text-sm tracking-widest">TACTICAL BRIEFING</h3>
+                        <button class="cyber-btn w-full py-3 text-sm" onclick="requestBriefing()">GET AI ADVICE</button>
+                        <div id="ai-briefing" class="text-xs leading-relaxed overflow-y-auto flex-1 bg-black/30 p-4 rounded border border-white/5">Waiting for request...</div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
-</div>
     <script>
-        // Data injected from Python Server
         const spots = {df_spots.to_json(orient="records")};
-        const path16 = {json.dumps(path_16)};
-        const path34 = {json.dumps(path_34)};
-        const depPath16 = {json.dumps(dep_path_16)};
-        const depPath34 = {json.dumps(dep_path_34)};
+        const path16 = {json.dumps(path_16)}; const path34 = {json.dumps(path_34)};
+        const depPath16 = {json.dumps(dep_path_16)}; const depPath34 = {json.dumps(dep_path_34)};
         const apiKey = "{api_key}";
 
-        // App State
-        let currentSpot = spots[0];
-        let planeLat = 33.585;
-        let planeLng = 130.445;
-        let simDay = "本日";
-        let simHour = 12;
-        let windDir = 160;
-        let windSpeed = 6;
-        let currentRwy = "16";
-        let filterRwy = "すべて";
+        let currentSpot = spots[0], planeLat = 33.585, planeLng = 130.445, simDay = "本日", simHour = 12, windDir = 160, windSpeed = 6, currentRwy = "16", filterRwy = "すべて";
 
-        // Map Setup
-       const map = L.map('map', {{ zoomControl: false, attributionControl: false }}).setView([33.560, 130.460], 12);
-        L.control.zoom({{ position: 'bottomright' }}).addTo(map);
-        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{{z}}/{{y}}/{{x}}', {{
-            attribution: 'Esri', maxZoom: 19
-        }}).addTo(map);
+        const map = L.map('map', {{ zoomControl: false, attributionControl: false }}).setView([33.560, 130.460], 13);
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{{z}}/{{y}}/{{x}}').addTo(map);
+        let markersLayer = L.layerGroup().addTo(map), approachLayer = null, departureLayer = null;
 
-        let markersLayer = L.layerGroup().addTo(map);
-        let approachLayer = null;
-        let departureLayer = null;
+        map.on('click', (e) => {{ planeLat = e.latlng.lat; planeLng = e.latlng.lng; renderMapElements(); }});
 
-        // Interactive Map Click (Warp)
-        map.on('click', function(e) {{
-            planeLat = e.latlng.lat;
-            planeLng = e.latlng.lng;
-            renderMapElements();
-        }});
-
-        // ☀️ 時間(simHour)に合わせて太陽の角度と影の向きを計算する関数
-        function getShadowStyle(isGlow) {{
-            // 6時(東)〜18時(西)の半円で太陽が動く軌道を計算
-            let t = (simHour - 6) / 12; 
-            let angle = t * Math.PI;
-            
-            // 夜間(18時以降・6時未満)は太陽の影を落とさず薄くする
+        function getShadowFilter() {{
+            let t = (simHour - 6) / 12, angle = t * Math.PI;
             let isNight = simHour < 6 || simHour >= 18;
-            let distance = isNight ? 0 : 8; // 影の長さ
-            let opacity = isNight ? 0.3 : 0.8; // 影の濃さ
-            
-            // 太陽の反対方向（-cos, -sin）に影を伸ばす
-            let shadowX = -Math.cos(angle) * distance;
-            let shadowY = -Math.sin(angle) * distance;
-            
-            // 選択中のカメラピンなど、自発光（グロー）させたい要素の合成用
-            let glow = isGlow ? "drop-shadow(0 0 8px rgba(129,236,255,0.8)) " : "";
-            
-            return `${{glow}}drop-shadow(${{shadowX}}px ${{shadowY}}px 4px rgba(0,0,0,${{opacity}}))`;
+            let dx = isNight ? 0 : -Math.cos(angle) * 8, dy = isNight ? 0 : -Math.sin(angle) * 8;
+            return `drop-shadow(${{dx}}px ${{dy}}px 4px rgba(0,0,0,0.8))`;
         }}
 
         function getPlaneSvg(heading) {{
-            let shadowFilter = getShadowStyle(false);
-            return `
-            <div class="ghost-marker" style="width: 24px; height: 24px;">
-                <svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="filter: ${{shadowFilter}}; transition: filter 0.3s ease;">
-                    <g style="transform: rotate(${{heading}}deg); transform-origin: 12px 12px;">
-                        <path d="M21 16v-2l-8-5V3.5C13 2.67 12.33 2 11.5 2S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5L21 16z" fill="#E0E0E0" stroke="#111111" stroke-width="0.5"/>
-                    </g>
-                </svg>
-            </div>`;
+            return `<div class="ghost-marker" style="width:24px;height:24px;"><svg width="24" height="24" style="filter:${{getShadowFilter()}} drop-shadow(0 0 6px rgba(129,236,255,0.6)); transition:filter 0.3s;"><g transform="rotate(${{heading}} 12 12)"><path d="M21 16v-2l-8-5V3.5C13 2.67 12.33 2 11.5 2S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5L21 16z" fill="#81ecff"/></g></svg></div>`;
         }}
 
-        function getCameraSvg(isSelected) {{
-            let color = isSelected ? "#81ecff" : "#444756";
-            let shadowFilter = getShadowStyle(isSelected);
-            return `
-            <div style="width: 24px; height: 24px; margin-left: -12px; margin-top: -12px;">
-                <svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="filter: ${{shadowFilter}}; transition: filter 0.3s ease;">
-                    <circle cx="12" cy="12" r="11" fill="${{color}}" stroke="#0a0e1a" stroke-width="2"/>
-                    <path d="M 8 10 L 9.5 8.5 L 14.5 8.5 L 16 10 L 17 10 A 1 1 0 0 1 18 11 L 18 16 A 1 1 0 0 1 17 17 L 7 17 A 1 1 0 0 1 6 16 L 6 11 A 1 1 0 0 1 7 10 Z" fill="#0a0e1a"/>
-                    <circle cx="12" cy="13.5" r="2.5" fill="${{color}}"/>
-                </svg>
-            </div>`;
+        function getCameraSvg(sel) {{
+            let col = sel ? "#81ecff" : "#444756";
+            let glow = sel ? `drop-shadow(0 0 8px ${{col}})` : "drop-shadow(1px 2px 3px #000)";
+            return `<div style="width:24px;height:24px;margin-left:-12px;margin-top:-12px;"><svg width="24" height="24" style="filter:${{glow}} ${{getShadowFilter()}}; transition:filter 0.3s;"><circle cx="12" cy="12" r="11" fill="${{col}}" stroke="#0a0e1a" stroke-width="2"/><path d="M8 10l1.5-1.5h5L16 10h1a1 1 0 011 1v5a1 1 0 01-1 1H7a1 1 0 01-1-1v-5a1 1 0 011-1z" fill="#0a0e1a"/><circle cx="12" cy="13.5" r="2.5" fill="${{col}}"/></svg></div>`;
         }}
-function getSunPositionHud(simHour) {{
-            // --- 🌍 本格的な太陽軌道計算（福岡空港：北緯33.58度） ---
-            let date = new Date();
-            if (simDay === "明日") date.setDate(date.getDate() + 1);
-            
-            // 元日からの経過日数を算出
-            let start = new Date(date.getFullYear(), 0, 0);
-            let dayOfYear = Math.floor((date - start) / (1000 * 60 * 60 * 24));
-            
-            // 太陽赤緯（δ）と福岡の緯度（ラジアン）
-            let declination = 23.45 * Math.sin((360 / 365) * (dayOfYear - 81) * Math.PI / 180) * Math.PI / 180;
-            let lat = 33.58 * Math.PI / 180; 
-            
-            // 日の出・日の入りの時間（時角）を正確に計算
-            let cosH0 = -Math.tan(lat) * Math.tan(declination);
-            cosH0 = Math.max(-1, Math.min(1, cosH0)); 
-            let H0Deg = Math.acos(cosH0) * 180 / Math.PI;
-            let sunriseHour = 12 - (H0Deg / 15);
-            let sunsetHour = 12 + (H0Deg / 15);
 
-            let isNight = simHour < sunriseHour || simHour > sunsetHour;
-            let archOpacity = isNight ? 0.2 : 0.8;
-            let sunOpacity = isNight ? 0.0 : 1.0;
-
-            // --- 📐 SVG描画用の座標計算マッピング ---
-            // X軸: 12時を中央(70)とし、1時間あたり12px動かす（表示幅内に綺麗に収める）
-            function getX(h) {{ return 70 + (h - 12) * 12; }}
-            // Y軸: 太陽高度（仰角）を計算してY座標に変換
-            function getY(h) {{
-                let hourAngle = 15 * (h - 12) * Math.PI / 180;
-                let sinAlpha = Math.sin(lat) * Math.sin(declination) + Math.cos(lat) * Math.cos(declination) * Math.cos(hourAngle);
-                let alphaDeg = Math.asin(sinAlpha) * 180 / Math.PI;
-                return 90 - alphaDeg; // 高度0度をY=90(地平線)、高度角をそのままYのマイナスにする
-            }}
-
-            // 正確な太陽軌道（アーチ）のパスを生成
-            let archPath = \`M${{getX(sunriseHour)}},90 \`;
-            for(let h = Math.ceil(sunriseHour); h <= Math.floor(sunsetHour); h++) {{
-                archPath += \`L${{getX(h)}},${{getY(h)}} \`;
-            }}
-            archPath += \`L${{getX(sunsetHour)}},90\`;
-
-            const arch = \`
-                <path d="${{archPath}}" fill="none" stroke="#ffaa00" stroke-width="1.5" opacity="${{archOpacity}}" />
-                <path d="${{archPath}}" fill="none" stroke="#ffaa00" stroke-width="4" opacity="${{archOpacity * 0.3}}" style="filter: blur(2px);" />
-            \`;
-
-            // 目盛り (日の出〜日の入りの範囲のみ描画)
-            let ticks = '';
-            for (let h = Math.ceil(sunriseHour); h <= Math.floor(sunsetHour); h += 2) {{
-                let tx = getX(h);
-                let ty = getY(h);
-                ticks += \`<line x1="${{tx}}" y1="${{ty}}" x2="${{tx}}" y2="${{ty + 4}}" stroke="#a7aabb" stroke-width="1" opacity="0.8" />\`;
-                ticks += \`<text x="${{tx}}" y="${{ty + 12}}" fill="#a7aabb" font-size="8" text-anchor="middle" font-family="Manrope" opacity="0.9">${{h}}h</text>\`;
-            }}
-            
-            // 現在の太陽の位置
-            let sx = getX(simHour);
-            let sy = isNight ? 90 : getY(simHour);
-
-            const sunAndTime = isNight ? '' : \`
-                <circle cx="${{sx}}" cy="${{sy}}" r="4" fill="#ffffff" style="filter: drop-shadow(0 0 6px #ffaa00);" opacity="${{sunOpacity}}" />
-                <circle cx="${{sx}}" cy="${{sy}}" r="1.5" fill="#ffaa00" opacity="${{sunOpacity}}" />
-            \`;
-
-            // 日の出・日の入りの文字列フォーマット (例: 5:32)
-            let sunriseStr = Math.floor(sunriseHour) + ":" + String(Math.round((sunriseHour%1)*60)).padStart(2,'0');
-            let sunsetStr = Math.floor(sunsetHour) + ":" + String(Math.round((sunsetHour%1)*60)).padStart(2,'0');
-
-            return \`
-            <div style="width: 170px; height: 130px; border-radius: 8px; border: 1px solid rgba(129, 236, 255, 0.3); background: rgba(10, 14, 26, 0.85); backdrop-filter: blur(8px); padding: 8px; font-family: 'Manrope', sans-serif; z-index: 10; position: relative; overflow: hidden;">
-                <svg width="170" height="110" viewBox="-10 0 160 110" style="position: absolute; top: 8px; left: 0;">
-                    <line x1="-20" y1="90" x2="180" y2="90" stroke="#81ecff" stroke-width="1" opacity="0.4" />
-                    
-                    <text x="${{getX(sunriseHour)}}" y="100" fill="#ffaa00" font-size="7" text-anchor="middle" opacity="0.8">${{sunriseStr}}</text>
-                    <text x="${{getX(sunsetHour)}}" y="100" fill="#ffaa00" font-size="7" text-anchor="middle" opacity="0.8">${{sunsetStr}}</text>
-                    
-                    ${{arch}}
-                    ${{ticks}}
-                    ${{sunAndTime}}
-                </svg>
-                
-                <div style="position: absolute; bottom: 8px; width: 100%; text-align: center; left: 0; pointer-events: none;">
-                    <div style="color: #81ecff; font-size: 24px; font-weight: 900; font-family: 'Space Grotesk'; text-shadow: 0 0 10px rgba(129,236,255,0.7); line-height: 1;">${{String(simHour).padStart(2, '0')}}:00</div>
-                    <div style="color: #a7aabb; font-size: 9px; opacity: 0.8; margin-top: 2px;">JST</div>
-                </div>
-            </div>
-            \`;
+        function getSunPositionHud(h) {{
+            let date = new Date(); if (simDay === "明日") date.setDate(date.getDate() + 1);
+            let dayOfYear = Math.floor((date - new Date(date.getFullYear(), 0, 0)) / 864e5);
+            let decl = 23.45 * Math.sin((360/365)*(dayOfYear-81)*Math.PI/180)*Math.PI/180, lat = 33.58*Math.PI/180;
+            let cosH0 = -Math.tan(lat)*Math.tan(decl), H0 = Math.acos(Math.max(-1,Math.min(1,cosH0)))*180/Math.PI;
+            let rise = 12-H0/15, set = 12+H0/15, isNight = h < rise || h > set;
+            function getX(h) {{ return 70 + (h-12)*12; }}
+            function getY(h) {{ let ha = 15*(h-12)*Math.PI/180; return 90 - Math.asin(Math.sin(lat)*Math.sin(decl)+Math.cos(lat)*Math.cos(decl)*Math.cos(ha))*180/Math.PI; }}
+            let archPath = `M${{getX(rise)}},90 `; for(let i=Math.ceil(rise); i<=Math.floor(set); i++) archPath+=`L${{getX(i)}},${{getY(i)}} `; archPath+=`L${{getX(set)}},90`;
+            return `<div style="width:170px;height:130px;border-radius:12px;border:1px solid rgba(129,236,255,0.3);background:rgba(10,14,26,0.9);backdrop-filter:blur(10px);padding:10px;"><svg width="150" height="110" viewBox="0 0 140 100"><line x1="0" y1="90" x2="140" y2="90" stroke="#81ecff" opacity="0.4"/><path d="${{archPath}}" fill="none" stroke="#ffaa00" stroke-width="1.5" opacity="${{isNight?0.2:0.8}}"/><circle cx="${{getX(h)}}" cy="${{isNight?90:getY(h)}}" r="4" fill="#81ecff" style="filter:drop-shadow(0 0 5px #81ecff)" opacity="${{isNight?0:1}}"/><text x="70" y="85" fill="#81ecff" font-size="22" font-weight="900" text-anchor="middle" font-family="Space Grotesk" style="text-shadow:0 0 10px #81ecff">${{String(h).padStart(2,'0')}}:00</text></svg></div>`;
         }}
+
         function renderMapElements() {{
             markersLayer.clearLayers();
-
-            // 1. AR Sun Position HUD (Fixed HUD Overlay)
-            let sunHudHtml = getSunPositionHud(simHour);
-            document.getElementById('wind-hud').innerHTML = sunHudHtml;
-
-            // 2. Camera Spots
-            let firstSpotSet = false;
+            document.getElementById('wind-hud').innerHTML = getSunPositionHud(simHour);
             spots.forEach(spot => {{
                 if (filterRwy !== "すべて" && !spot['RWY'].includes(filterRwy)) return;
-                
-                if (!firstSpotSet && !spots.some(s => s['スポット'] === currentSpot['スポット'] && (filterRwy === "すべて" || s['RWY'].includes(filterRwy)))) {{
-                    currentSpot = spot;
-                }}
-                firstSpotSet = true;
-
-                let isSelected = (spot['スポット'] === currentSpot['スポット']);
-                let icon = L.divIcon({{ html: getCameraSvg(isSelected), className: '' }});
-                
-                let marker = L.marker([spot['緯度'], spot['経度']], {{icon: icon}}).bindTooltip(spot['スポット']);
-                marker.on('click', (e) => {{
-                    L.DomEvent.stopPropagation(e); 
-                    currentSpot = spot;
-                    updateUI();
-                    renderMapElements();
-                }});
-                marker.addTo(markersLayer);
+                let isSel = (spot['スポット'] === currentSpot['スポット']);
+                let marker = L.marker([spot['緯度'], spot['経度']], {{icon:L.divIcon({{html:getCameraSvg(isSel),className:''}})}}).bindTooltip(spot['スポット']).addTo(markersLayer);
+                marker.on('click', () => {{ currentSpot=spot; updateUI(); renderMapElements(); }});
             }});
-
-            // 3. Sightline
-            L.polyline([[currentSpot['緯度'], currentSpot['経度']], [planeLat, planeLng]], {{
-                color: '#81ecff', weight: 3, dashArray: '5, 8'
-            }}).addTo(markersLayer);
-
-            // 4. Airplane
-            let heading = currentRwy === "16" ? 156 : 336;
-            let planeIcon = L.divIcon({{ html: getPlaneSvg(heading), className: '' }});
-            L.marker([planeLat, planeLng], {{icon: planeIcon, interactive: false}}).addTo(markersLayer);
+            L.polyline([[currentSpot['緯度'],currentSpot['経度']],[planeLat,planeLng]],{{color:'#81ecff',weight:2,dashArray:'5,10'}}).addTo(markersLayer);
+            L.marker([planeLat,planeLng],{{icon:L.divIcon({{html:getPlaneSvg(currentRwy==="16"?156:336),className:''}})}}).addTo(markersLayer);
+            updateAntPath();
         }}
 
         function updateAntPath() {{
-            // 既存のルートがあれば消去
-            if (approachLayer) map.removeLayer(approachLayer);
-            if (departureLayer) map.removeLayer(departureLayer);
-            
-            // 使用滑走路に応じたルート座標の取得
-            let appCoords = currentRwy === "16" ? path16 : path34;
-            let depCoords = currentRwy === "16" ? depPath16 : depPath34;
-            
-            // 色の設定（着陸：シアン、離陸：オレンジ）
-            let appColor = currentRwy === "16" ? "#81ecff" : "#00e3fd";
-            let depColor = "#ffaa00"; 
-            
-            // アプローチ（着陸）ルートの描画
-            approachLayer = L.polyline.antPath(appCoords, {{ delay: 800, weight: 6, color: appColor, pulseColor: "#ffffff" }});
-            approachLayer.bindTooltip("🛬 アプローチ（着陸）ルート", {{sticky: true}});
-            approachLayer.addTo(map);
+            if (approachLayer) map.removeLayer(approachLayer); if (departureLayer) map.removeLayer(departureLayer);
+            approachLayer = L.polyline.antPath(currentRwy==="16"?path16:path34, {{delay:800,weight:5,color:'#81ecff',pulseColor:'#fff'}}).addTo(map);
+            departureLayer = L.polyline.antPath(currentRwy==="16"?depPath16:depPath34, {{delay:1000,weight:5,color:'#ffaa00',pulseColor:'#fff'}}).addTo(map);
+        }}
 
-            // ディパーチャー（離陸）ルートの描画
-            departureLayer = L.polyline.antPath(depCoords, {{ delay: 800, weight: 6, color: depColor, pulseColor: "#ffffff" }});
-            departureLayer.bindTooltip("🛫 ディパーチャー（離陸）ルート", {{sticky: true}});
-            departureLayer.addTo(map);
+        async function updateWeather() {{
+            try {{
+                const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=33.585&longitude=130.445&hourly=winddirection_10m,windspeed_10m&timezone=Asia%2FTokyo`);
+                const data = await res.json();
+                let now = new Date(new Date().toLocaleString("en-US", {{timeZone:"Asia/Tokyo"}})); if(simDay==="明日") now.setDate(now.getDate()+1);
+                let target = `${{now.getFullYear()}}-${{String(now.getMonth()+1).padStart(2,'0')}}-${{String(now.getDate()).padStart(2,'0')}}T${{String(simHour).padStart(2,'0')}}:00`;
+                let idx = data.hourly.time.indexOf(target);
+                if(idx!==-1) {{ windDir=data.hourly.winddirection_10m[idx]; windSpeed=Math.round(data.hourly.windspeed_10m[idx]*0.54); }}
+            }} catch(e) {{ windDir=160; windSpeed=6; }}
+            currentRwy = (windDir>=90 && windDir<=270) ? "16" : "34";
+            updateUI(); renderMapElements();
         }}
 
         function updateUI() {{
@@ -500,93 +220,26 @@ function getSunPositionHud(simHour) {{
             document.getElementById('spotDesc').innerText = currentSpot['特徴'];
             document.getElementById('spotTime').innerText = currentSpot['ベスト時間'];
             document.getElementById('spotLens').innerText = currentSpot['焦点距離'];
-            
-            document.getElementById('wDir').innerText = windDir + '°';
-            document.getElementById('wSpd').innerText = windSpeed + ' kt';
-            document.getElementById('cRwy').innerText = 'RWY ' + currentRwy;
-            document.getElementById('cTime').innerText = simDay + ' ' + String(simHour).padStart(2, '0') + ':00';
-        }}
-
-        async function updateWeather() {{
-            try {{
-                const url = "https://api.open-meteo.com/v1/forecast?latitude=33.585&longitude=130.445&hourly=winddirection_10m,windspeed_10m&timezone=Asia%2FTokyo";
-                const res = await fetch(url);
-                const data = await res.json();
-                
-                // ▼ 修正：日本時間(JST)の正確な日付文字列を生成する
-                let jstDate = new Date(new Date().toLocaleString("en-US", {{timeZone: "Asia/Tokyo"}}));
-                if (simDay === "明日") {{
-                    jstDate.setDate(jstDate.getDate() + 1);
-                }}
-                
-                let yyyy = jstDate.getFullYear();
-                let mm = String(jstDate.getMonth() + 1).padStart(2, '0');
-                let dd = String(jstDate.getDate()).padStart(2, '0');
-                let hh = String(simHour).padStart(2, '0');
-                
-                // APIのフォーマット(YYYY-MM-DDTHH:00)にピタリと合わせる
-                let targetTimeStr = `${{yyyy}}-${{mm}}-${{dd}}T${{hh}}:00`;
-                let idx = data.hourly.time.indexOf(targetTimeStr);
-                
-                if (idx !== -1) {{
-                    windDir = data.hourly.winddirection_10m[idx];
-                    windSpeed = Math.round(data.hourly.windspeed_10m[idx] * 0.539957); // km/h を kt に変換
-                }} else {{ 
-                    fallbackWeather(); 
-                }}
-            }} catch(e) {{ 
-                fallbackWeather(); 
-            }}
-            
-            // 風向から運用滑走路を判定 (90度〜270度の南風なら16、それ以外は34)
-            currentRwy = (windDir >= 90 && windDir <= 270) ? "16" : "34";
-            
-            updateUI();
-            renderMapElements();
-            updateAntPath();
-        }}
-
-        function fallbackWeather() {{
-            currentRwy = (simHour >= 7 && simHour <= 11) ? "16" : "34";
-            windDir = currentRwy === "16" ? 160 : 340;
-            windSpeed = currentRwy === "16" ? 6 : 18;
+            document.getElementById('wDir').innerText = windDir+'°'; document.getElementById('wSpd').innerText = windSpeed+'kt';
+            document.getElementById('cRwy').innerText = 'RWY '+currentRwy; document.getElementById('cTime').innerText = simDay+' '+simHour+':00';
         }}
 
         async function requestBriefing() {{
-            if (!apiKey) {{
-                document.getElementById('ai-briefing').innerHTML = "🚨 <b>通信エラー:</b><br>GEMINI_API_KEY が設定されていません。";
-                return;
-            }}
-            document.getElementById('ai-briefing').innerText = "ANALYZING TACTICAL DATA...";
-            let heading = currentRwy === "16" ? 156 : 336;
-            const prompt = `福岡空港の撮影スポット「${{currentSpot['スポット']}}」での空撮助言。シミュレーション予定日時は「${{simDay}}の${{simHour}}時」、風向は${{windDir}}度で風速は${{windSpeed}}kt。被写体の飛行機はRWY${{currentRwy}}運用に従い機首を${{heading}}度に向けています。この場所の特徴は「${{currentSpot['特徴']}}」、マスターの持参する推奨焦点距離は「${{currentSpot['焦点距離']}}」です。この機材と環境を活かしたマニアックな撮影戦術を解説せよ。Markdown記号は禁止。`;
-            
+            document.getElementById('ai-briefing').innerText = "STRATEGIZING...";
+            const prompt = `福岡空港の「${{currentSpot['スポット']}}」での撮影アドバイス。${{simDay}}${{simHour}}時、風向${{windDir}}度、RWY${{currentRwy}}運用。焦点距離${{currentSpot['焦点距離']}}。短くマニアックに。`;
             try {{
-                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${{apiKey}}`;
-                const res = await fetch(url, {{
-                    method: 'POST',
-                    headers: {{'Content-Type': 'application/json'}},
-                    body: JSON.stringify({{contents: [{{parts: [{{text: prompt}}]}}]}})
-                }});
-                const data = await res.json();
-                document.getElementById('ai-briefing').innerText = data.candidates[0].content.parts[0].text;
-            }} catch (e) {{
-                document.getElementById('ai-briefing').innerHTML = "🚨 <b>AIシステムとの通信に失敗しました。</b><br>ネットワーク環境を確認してください。";
-            }}
+                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${{apiKey}}`, {{method:'POST',headers:{{'Content-Type':'application/json'}},body:JSON.stringify({{contents:[{{parts:[{{text:prompt}}]}}]}})}});
+                const data = await res.json(); document.getElementById('ai-briefing').innerText = data.candidates[0].content.parts[0].text;
+            }} catch(e) {{ document.getElementById('ai-briefing').innerText = "OFFLINE"; }}
         }}
 
-        // Handle user input controls
-        function changeFilter(val) {{ filterRwy = val; renderMapElements(); }}
-        function changeDay(val) {{ simDay = val; updateWeather(); }}
-        function changeHourLive(val) {{ document.getElementById('hourVal').innerText = val + ":00"; }}
-        function changeHour(val) {{ simHour = parseInt(val); updateWeather(); }}
-
-        // Initial Boot
+        function changeFilter(v) {{ filterRwy=v; renderMapElements(); }}
+        function changeDay(v) {{ simDay=v; updateWeather(); }}
+        function changeHourLive(v) {{ document.getElementById('hourVal').innerText = v+":00"; }}
+        function changeHour(v) {{ simHour=parseInt(v); updateWeather(); }}
         updateWeather();
     </script>
 </body>
 </html>
 """
-
-# Streamlitの全画面を使って独自のUIを出力
-st.components.v1.html(html_app, height=1100, scrolling=True)
+st.components.v1.html(html_app, height=1200, scrolling=False)
