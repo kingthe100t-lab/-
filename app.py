@@ -82,11 +82,11 @@ html_app = f"""
             text-shadow: 0 0 16px rgba(167, 170, 187, 0.6); 
         }}
 
-        /* 🌌 ドットのみ、倍にする前の「ちょうどいいサイズ（芯1.5px、間隔35px）」に復元 */
+        /* 🌌 ドットのみ、さらに半分（芯0.75px、間隔35px）に縮小 */
         .app-container {{
             background-image: 
-                radial-gradient(circle, rgba(129, 236, 255, 0.9) 1.5px, transparent 3px),
-                radial-gradient(circle, rgba(129, 236, 255, 0.2) 6px, transparent 12px),
+                radial-gradient(circle, rgba(129, 236, 255, 0.9) 0.75px, transparent 1.5px),
+                radial-gradient(circle, rgba(129, 236, 255, 0.2) 3px, transparent 6px),
                 linear-gradient(to bottom right, #020308, #0a0e1a, #020308); 
             background-size: 35px 35px, 35px 35px, 100% 100%;
             min-height: 100vh;
