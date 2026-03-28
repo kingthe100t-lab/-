@@ -398,14 +398,7 @@ function getSunPositionHud(simHour) {{
 
             // 1. AR Sun Position HUD (Fixed HUD Overlay)
             let sunHudHtml = getSunPositionHud(simHour);
-            // 画面固定のHUDレイヤーに直接HTMLを注入する
             document.getElementById('wind-hud').innerHTML = sunHudHtml;
-
-            let windIcon = L.divIcon({{
-                html: windSvg,
-                className: '', iconSize: [80, 80]
-            }});
-            L.marker([33.585, 130.445], {{icon: windIcon, interactive: false}}).addTo(markersLayer);
 
             // 2. Camera Spots
             let firstSpotSet = false;
@@ -422,7 +415,7 @@ function getSunPositionHud(simHour) {{
                 
                 let marker = L.marker([spot['緯度'], spot['経度']], {{icon: icon}}).bindTooltip(spot['スポット']);
                 marker.on('click', (e) => {{
-                    L.DomEvent.stopPropagation(e); // Prevent map click from moving plane
+                    L.DomEvent.stopPropagation(e); 
                     currentSpot = spot;
                     updateUI();
                     renderMapElements();
@@ -436,7 +429,7 @@ function getSunPositionHud(simHour) {{
             }}).addTo(markersLayer);
 
             // 4. Airplane
-            let heading = currentRwy === "16" ? 150 : 330;
+            let heading = currentRwy === "16" ? 156 : 336;
             let planeIcon = L.divIcon({{ html: getPlaneSvg(heading), className: '' }});
             L.marker([planeLat, planeLng], {{icon: planeIcon, interactive: false}}).addTo(markersLayer);
         }}
