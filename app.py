@@ -172,7 +172,8 @@ html_app = f"""
             width: 100%; height: 4px; cursor: pointer; background: rgba(129, 236, 255, 0.2); border-radius: 2px;
             box-shadow: 0 0 7px rgba(129, 236, 255, 0.2); 
         }}
-        .leaflet-container {{ background: #0a0e1a; font-family: 'Manrope', sans-serif; }}
+        .leaflet-container {{ background: #0a0e1a; font-family: 'Manrope', sans-serif; z-index: 1; outline: none !important; -webkit-tap-highlight-color: transparent !important; }}
+        #map:focus, #map:active {{ outline: none !important; }}
         .ghost-marker {{ pointer-events: none !important; background: transparent !important; border: none !important; margin-left: -12px !important; margin-top: -12px !important; }}
         .custom-radio input[type="radio"] {{ accent-color: #81ecff; cursor: pointer; filter: drop-shadow(0 0 7px #81ecff); }} 
     </style>
