@@ -118,12 +118,12 @@ html_app = f"""
         .cyber-btn {{
             background: linear-gradient(to right, #81ecff, #00e3fd); color: #004d57; font-family: 'Space Grotesk', sans-serif; font-weight: 700;
             text-transform: uppercase; letter-spacing: 0.1em; border: none; 
-            box-shadow: 0 0 28px rgba(129,236,255,0.5); 
+            box-shadow: 0 0 56px rgba(129,236,255,0.5); 
             cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;
         }}
         .cyber-btn:hover {{ 
             transform: scale(1.02); 
-            box-shadow: 0 0 42px rgba(129,236,255,0.7); 
+            box-shadow: 0 0 56px rgba(129,236,255,0.7); 
         }}
         
         input[type=range] {{ -webkit-appearance: none; background: transparent; width: 100%; outline: none; }}
