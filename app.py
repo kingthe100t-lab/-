@@ -255,7 +255,7 @@ html_app = f"""
                 let cssAngle = 270 + (t * 180); 
                 
                 // 修正版：正しい方角からオレンジ色の光が差し込む
-                overlay.style.background = `linear-gradient(${{cssAngle}}deg, rgba(255, 120, 0, 0.8) 0%, rgba(255, 140, 0, 0.4) 60%, transparent 100%)`;
+                overlay.style.background = `linear-gradient(${{cssAngle}}deg, rgba(255, 120, 0, 0.7) 0%, rgba(255, 140, 0, 0.4) 60%, transparent 100%)`;
             }}
 
             spots.forEach(spot => {{
