@@ -153,45 +153,72 @@ html_app = f"""
 
         map.on('click', (e) => {{ planeLat = e.latlng.lat; planeLng = e.latlng.lng; renderMapElements(); }});
 
-        function getShadowFilter() {{
-            let t = (simHour - 6) / 12, angle = t * Math.PI;
+        // ☀️ 太陽の角度から「影の向き」を計算する関数
+        function getShadowFilter(isGlow) {{
+            let t = (simHour - 6) / 12; 
+            let angle = t * Math.PI;
             let isNight = simHour < 6 || simHour >= 18;
-            let dx = isNight ? 0 : -Math.cos(angle) * 8, dy = isNight ? 0 : -Math.sin(angle) * 8;
-            return `drop-shadow(${{dx}}px ${{dy}}px 4px rgba(0,0,0,0.8))`;
+            
+            // 影の伸びる方向を計算（太陽の反対側）
+            let dist = isNight ? 0 : 10; 
+            let dx = -Math.cos(angle) * dist;
+            let dy = -Math.sin(angle) * dist;
+            let opacity = isNight ? 0.2 : 0.7;
+            
+            let glow = isGlow ? "drop-shadow(0 0 12px #81ecff) " : "";
+            // ここで影(drop-shadow)を合成して返す
+            return `${{glow}}drop-shadow(${{dx}}px ${{dy}}px 5px rgba(0,0,0,${{opacity}}))`;
         }}
 
+        // ✈️ 飛行機SVG（サイズを44pxに固定拡大）
         function getPlaneSvg(heading) {{
-            return `<div class="ghost-marker" style="width:80px;height:80px;"><svg width="80" height="80" style="filter:${{getShadowFilter()}} drop-shadow(0 0 6px rgba(129,236,255,0.6)); transition:filter 0.3s;"><g transform="rotate(${{heading}} 12 12)"><path d="M21 16v-2l-8-5V3.5C13 2.67 12.33 2 11.5 2S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5L21 16z" fill="#81ecff"/></g></svg></div>`;
+            return `
+            <div style="width:44px; height:44px;">
+                <svg width="44" height="44" viewBox="0 0 24 24" style="filter:${{getShadowFilter(false)}}; transition:filter 0.3s ease;">
+                    <g transform="rotate(${{heading}} 12 12)">
+                        <path d="M21 16v-2l-8-5V3.5C13 2.67 12.33 2 11.5 2S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5L21 16z" fill="#81ecff"/>
+                    </g>
+                </svg>
+            </div>`;
         }}
 
+        // 📸 カメラピンSVG
         function getCameraSvg(sel) {{
             let col = sel ? "#81ecff" : "#444756";
-            let glow = sel ? `drop-shadow(0 0 8px ${{col}})` : "drop-shadow(1px 2px 3px #000)";
-            return `<div style="width:24px;height:24px;margin-left:-12px;margin-top:-12px;"><svg width="24" height="24" style="filter:${{glow}} ${{getShadowFilter()}}; transition:filter 0.3s;"><circle cx="12" cy="12" r="11" fill="${{col}}" stroke="#0a0e1a" stroke-width="2"/><path d="M8 10l1.5-1.5h5L16 10h1a1 1 0 011 1v5a1 1 0 01-1 1H7a1 1 0 01-1-1v-5a1 1 0 011-1z" fill="#0a0e1a"/><circle cx="12" cy="13.5" r="2.5" fill="${{col}}"/></svg></div>`;
+            return `
+            <div style="width:28px; height:28px; margin-left:-14px; margin-top:-14px;">
+                <svg width="28" height="28" viewBox="0 0 24 24" style="filter:${{getShadowFilter(sel)}}; transition:filter 0.3s ease;">
+                    <circle cx="12" cy="12" r="11" fill="${{col}}" stroke="#0a0e1a" stroke-width="2"/>
+                    <path d="M8 10l1.5-1.5h5L16 10h1a1 1 0 011 1v5a1 1 0 01-1 1H7a1 1 0 01-1-1v-5a1 1 0 011-1z" fill="#0a0e1a"/>
+                    <circle cx="12" cy="13.5" r="2.5" fill="${{col}}"/>
+                </svg>
+            </div>`;
         }}
 
-        function getSunPositionHud(h) {{
-            let date = new Date(); if (simDay === "明日") date.setDate(date.getDate() + 1);
-            let dayOfYear = Math.floor((date - new Date(date.getFullYear(), 0, 0)) / 864e5);
-            let decl = 23.45 * Math.sin((360/365)*(dayOfYear-81)*Math.PI/180)*Math.PI/180, lat = 33.58*Math.PI/180;
-            let cosH0 = -Math.tan(lat)*Math.tan(decl), H0 = Math.acos(Math.max(-1,Math.min(1,cosH0)))*180/Math.PI;
-            let rise = 12-H0/15, set = 12+H0/15, isNight = h < rise || h > set;
-            function getX(h) {{ return 70 + (h-12)*12; }}
-            function getY(h) {{ let ha = 15*(h-12)*Math.PI/180; return 90 - Math.asin(Math.sin(lat)*Math.sin(decl)+Math.cos(lat)*Math.cos(decl)*Math.cos(ha))*180/Math.PI; }}
-            let archPath = `M${{getX(rise)}},90 `; for(let i=Math.ceil(rise); i<=Math.floor(set); i++) archPath+=`L${{getX(i)}},${{getY(i)}} `; archPath+=`L${{getX(set)}},90`;
-            return `<div style="width:170px;height:130px;border-radius:12px;border:1px solid rgba(129,236,255,0.3);background:rgba(10,14,26,0.9);backdrop-filter:blur(10px);padding:10px;"><svg width="150" height="110" viewBox="0 0 140 100"><line x1="0" y1="90" x2="140" y2="90" stroke="#81ecff" opacity="0.4"/><path d="${{archPath}}" fill="none" stroke="#ffaa00" stroke-width="1.5" opacity="${{isNight?0.2:0.8}}"/><circle cx="${{getX(h)}}" cy="${{isNight?90:getY(h)}}" r="4" fill="#81ecff" style="filter:drop-shadow(0 0 5px #81ecff)" opacity="${{isNight?0:1}}"/><text x="70" y="85" fill="#81ecff" font-size="22" font-weight="900" text-anchor="middle" font-family="Space Grotesk" style="text-shadow:0 0 10px #81ecff">${{String(h).padStart(2,'0')}}:00</text></svg></div>`;
-        }}
-
+        // 🗺️ 地図要素の描画
         function renderMapElements() {{
             markersLayer.clearLayers();
+            
+            // 太陽HUDの描画
             document.getElementById('wind-hud').innerHTML = getSunPositionHud(simHour);
+            
+            // カメラピンの描画
             spots.forEach(spot => {{
                 if (filterRwy !== "すべて" && !spot['RWY'].includes(filterRwy)) return;
                 let isSel = (spot['スポット'] === currentSpot['スポット']);
-                let marker = L.marker([spot['緯度'], spot['経度']], {{icon:L.divIcon({{html:getCameraSvg(isSel),className:''}})}}).bindTooltip(spot['スポット']).addTo(markersLayer);
+                let marker = L.marker([spot['緯度'], spot['経度']], {{
+                    icon: L.divIcon({{ html: getCameraSvg(isSel), className: '' }})
+                }}).bindTooltip(spot['スポット']).addTo(markersLayer);
+                
                 marker.on('click', () => {{ currentSpot=spot; updateUI(); renderMapElements(); }});
             }});
-            L.polyline([[currentSpot['緯度'],currentSpot['経度']],[planeLat,planeLng]],{{color:'#81ecff',weight:2,dashArray:'5,10'}}).addTo(markersLayer);
+            
+            // 視線ライン
+            L.polyline([[currentSpot['緯度'], currentSpot['経度']], [planeLat, planeLng]], {{
+                color: '#81ecff', weight: 2, dashArray: '5, 10', opacity: 0.5
+            }}).addTo(markersLayer);
+            
+            // 飛行機の描画（サイズ44px指定）
             L.marker([planeLat, planeLng], {{
                 icon: L.divIcon({{
                     html: getPlaneSvg(currentRwy === "16" ? 156 : 336),
@@ -201,6 +228,7 @@ html_app = f"""
                 }}),
                 interactive: false
             }}).addTo(markersLayer);
+            
             updateAntPath();
         }}
 
