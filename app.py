@@ -232,33 +232,54 @@ html_app = f"""
         // 🗺️ 全要素描画
         function renderMapElements() {{
             markersLayer.clearLayers();
-            
-            // 太陽HUDの描画更新
             document.getElementById('wind-hud').innerHTML = getSunPositionHud(simHour);
             
-            // カメラスポットの描画
+            // ☀️ 地図上のオレンジ色の扇形（光の照射範囲）
+            let t = (simHour - 6) / 12;
+            let isNight = simHour < 6 || simHour >= 18;
+            if (!isNight) {{
+                // 太陽の方位角を計算（E=90, S=180, W=270）
+                let sunAzimuth = 90 + (t * 180); 
+                
+                // 扇形（ポリゴン）の頂点を作成
+                let points = [[planeLat, planeLng]];
+                let radius = 0.015; // 照射距離
+                for (let i = -20; i <= 20; i += 5) {{
+                    let rad = (sunAzimuth + i - 90) * Math.PI / 180;
+                    points.push([
+                        planeLat + Math.cos(rad) * radius,
+                        planeLng + Math.sin(rad) * radius
+                    ]);
+                }}
+                
+                // オレンジ色の濃薄（扇形）を描画
+                L.polygon(points, {{
+                    color: '#ffaa00',
+                    weight: 0,
+                    fillColor: '#ffaa00',
+                    fillOpacity: 0.2, // ふんわりした濃淡
+                    interactive: false
+                }}).addTo(markersLayer);
+            }}
+
+            // カメラスポット
             spots.forEach(spot => {{
                 if (filterRwy !== "すべて" && !spot['RWY'].includes(filterRwy)) return;
                 let isSel = (spot['スポット'] === currentSpot['スポット']);
-                let marker = L.marker([spot['緯度'], spot['経度']], {{
-                    icon: L.divIcon({{ html: getCameraSvg(isSel), className: '' }})
-                }}).bindTooltip(spot['スポット']).addTo(markersLayer);
-                
+                let marker = L.marker([spot['緯度'], spot['経度']], {{icon:L.divIcon({{html:getCameraSvg(isSel),className:''}})}}).bindTooltip(spot['スポット']).addTo(markersLayer);
                 marker.on('click', () => {{ currentSpot=spot; updateUI(); renderMapElements(); }});
             }});
             
-            // 視線ライン（スポットから飛行機へ）
-            L.polyline([[currentSpot['緯度'], currentSpot['経度']], [planeLat, planeLng]], {{
-                color: '#81ecff', weight: 2, dashArray: '5, 10', opacity: 0.5
-            }}).addTo(markersLayer);
+            // 視線ライン
+            L.polyline([[currentSpot['緯度'],currentSpot['経度']],[planeLat,planeLng]],{{color:'#81ecff',weight:2,dashArray:'5,10',opacity:0.5}}).addTo(markersLayer);
             
-            // 飛行機の描画（向きは運用滑走路に連動）
-            L.marker([planeLat, planeLng], {{
-                icon: L.divIcon({{
-                    html: getPlaneSvg(currentRwy === "16" ? 156 : 336),
-                    className: '',
-                    iconSize: [44, 44],
-                    iconAnchor: [22, 22]
+            // 飛行機
+            L.marker([planeLat,planeLng],{{
+                icon:L.divIcon({{
+                    html:getPlaneSvg(currentRwy==="16"?156:336),
+                    className:'',
+                    iconSize:[44,44],
+                    iconAnchor:[22,22]
                 }}),
                 interactive: false
             }}).addTo(markersLayer);
