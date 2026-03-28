@@ -298,7 +298,7 @@ html_app = f"""
             let animSpeed = Math.max(0.4, 2.5 - (windSpeed * 0.15)); 
             let windSvg = `
             <div style="width: 80px; height: 80px; filter: drop-shadow(0 0 10px rgba(129,236,255,0.8));">
-                <svg width="80" height="80" viewBox="0 0 80 80" style="transform: rotate(${windDir}deg);">
+                <svg width="80" height="80" viewBox="0 0 80 80" style="transform: rotate(${{windDir}}deg);">
                     <style>
                         @keyframes windFlow {
                             0% { transform: translateY(-20px); opacity: 0; }
