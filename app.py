@@ -291,10 +291,38 @@ html_app = f"""
         function renderMapElements() {{
             markersLayer.clearLayers();
 
-            // 1. Wind Indicator
+            // 1. Wind Indicator (Animated Cyber Style)
+            // 風速(kt)に応じてアニメーション速度を変える（風が強いほど速く動く）
+            let animSpeed = Math.max(0.4, 2.5 - (windSpeed * 0.15)); 
+            
+            let windSvg = `
+            <div style="width: 80px; height: 80px; margin-left: -40px; margin-top: -40px; pointer-events: none;">
+                <svg width="80" height="80" viewBox="0 0 80 80" style="transform: rotate(${{windDir}}deg); filter: drop-shadow(0 0 8px rgba(129,236,255,0.8));">
+                    <style>
+                        @keyframes windFlow {{
+                            0% {{ transform: translateY(-20px); opacity: 0; }}
+                            20% {{ opacity: 1; }}
+                            80% {{ opacity: 1; }}
+                            100% {{ transform: translateY(20px); opacity: 0; }}
+                        }}
+                        .w-line1 {{ animation: windFlow ${{animSpeed}}s linear infinite; }}
+                        .w-line2 {{ animation: windFlow ${{animSpeed * 1.3}}s linear infinite 0.2s; opacity: 0.6; }}
+                        .w-line3 {{ animation: windFlow ${{animSpeed * 0.8}}s linear infinite 0.4s; opacity: 0.6; }}
+                    </style>
+                    <circle cx="40" cy="40" r="2" fill="#81ecff" />
+                    <circle cx="40" cy="40" r="15" fill="none" stroke="#81ecff" stroke-width="1" stroke-dasharray="2, 4" opacity="0.5" />
+                    
+                    <g fill="none" stroke="#81ecff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path class="w-line1" d="M40,20 L40,60 M34,54 L40,60 L46,54" />
+                        <path class="w-line2" d="M26,25 L26,55 M22,51 L26,55 L30,51" />
+                        <path class="w-line3" d="M54,30 L54,50 M50,46 L54,50 L58,46" />
+                    </g>
+                </svg>
+            </div>`;
+
             let windIcon = L.divIcon({{
-                html: `<div style="font-size: 35px; color: #81ecff; text-shadow: 2px 2px 4px #000; transform: rotate(${{windDir}}deg); transform-origin: center; margin-left: -20px; margin-top: -20px;">⬇</div>`,
-                className: '', iconSize: [40, 40]
+                html: windSvg,
+                className: '', iconSize: [80, 80]
             }});
             L.marker([33.585, 130.445], {{icon: windIcon, interactive: false}}).addTo(markersLayer);
 
