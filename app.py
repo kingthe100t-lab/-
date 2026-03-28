@@ -229,7 +229,7 @@ html_app = f"""
             // 飛行機 (中心点22pxで固定)
             L.marker([planeLat,planeLng],{{
                 icon:L.divIcon({{
-                    html:getPlaneSvg(currentRwy==="16"?156:336),
+                    html:getPlaneSvg(currentRwy==="16"?150:330),
                     className:'',
                     iconSize:[44,44],
                     iconAnchor:[22,22]
