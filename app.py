@@ -69,6 +69,22 @@ curve_points = [
     faf_pos
 ]
 path_34 = create_smooth_path(curve_points, 120) + [faf_pos, [rwy34_pos[0], rwy34_pos[1]]]
+# 🛫 離陸（ディパーチャー）ルート
+dep_curve_16 = [
+    [rwy34_pos[0], rwy34_pos[1]], # RWY16離陸（南へ向かって飛ぶ）
+    [33.520, 130.480], 
+    [33.460, 130.460], 
+    [33.420, 130.380]
+]
+dep_path_16 = create_smooth_path(dep_curve_16, 60)
+
+dep_curve_34 = [
+    [rwy16_pos[0], rwy16_pos[1]], # RWY34離陸（北へ向かって海へ抜ける）
+    [33.660, 130.410],
+    [33.720, 130.350],
+    [33.750, 130.250]
+]
+dep_path_34 = create_smooth_path(dep_curve_34, 60)
 
 # --- 🌐 超・本格的フロントエンド（HTML/JS/CSS）の構築 ---
 html_app = f"""
@@ -238,6 +254,8 @@ html_app = f"""
         const spots = {df_spots.to_json(orient="records")};
         const path16 = {json.dumps(path_16)};
         const path34 = {json.dumps(path_34)};
+        const depPath16 = {json.dumps(dep_path_16)};
+        const depPath34 = {json.dumps(dep_path_34)};
         const apiKey = "{api_key}";
 
         // App State
@@ -259,7 +277,8 @@ html_app = f"""
         }}).addTo(map);
 
         let markersLayer = L.layerGroup().addTo(map);
-        let antPathLayer = null;
+        let approachLayer = null;
+        let departureLayer = null;
 
         // Interactive Map Click (Warp)
         map.on('click', function(e) {{
@@ -365,11 +384,27 @@ html_app = f"""
         }}
 
         function updateAntPath() {{
-            if (antPathLayer) map.removeLayer(antPathLayer);
-            let coords = currentRwy === "16" ? path16 : path34;
-            let color = currentRwy === "16" ? "#81ecff" : "#00e3fd";
-            antPathLayer = L.polyline.antPath(coords, {{ delay: 800, weight: 6, color: color, pulseColor: "#ffffff" }});
-            antPathLayer.addTo(map);
+            // 既存のルートがあれば消去
+            if (approachLayer) map.removeLayer(approachLayer);
+            if (departureLayer) map.removeLayer(departureLayer);
+            
+            // 使用滑走路に応じたルート座標の取得
+            let appCoords = currentRwy === "16" ? path16 : path34;
+            let depCoords = currentRwy === "16" ? depPath16 : depPath34;
+            
+            // 色の設定（着陸：シアン、離陸：オレンジ）
+            let appColor = currentRwy === "16" ? "#81ecff" : "#00e3fd";
+            let depColor = "#ffaa00"; 
+            
+            // アプローチ（着陸）ルートの描画
+            approachLayer = L.polyline.antPath(appCoords, {{ delay: 800, weight: 6, color: appColor, pulseColor: "#ffffff" }});
+            approachLayer.bindTooltip("🛬 アプローチ（着陸）ルート", {{sticky: true}});
+            approachLayer.addTo(map);
+
+            // ディパーチャー（離陸）ルートの描画
+            departureLayer = L.polyline.antPath(depCoords, {{ delay: 800, weight: 6, color: depColor, pulseColor: "#ffffff" }});
+            departureLayer.bindTooltip("🛫 ディパーチャー（離陸）ルート", {{sticky: true}});
+            departureLayer.addTo(map);
         }}
 
         function updateUI() {{
