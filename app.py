@@ -72,21 +72,21 @@ html_app = f"""
     <script src="https://cdn.jsdelivr.net/npm/leaflet-ant-path@1.3.0/dist/leaflet-ant-path.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Manrope:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
-        /* 🌌 全体の文字にうっすらとした光のにじみを追加（グロー2倍維持） */
+        /* 🌌 全体の文字にうっすらとした光のにじみ（70%にトーンダウン） */
         body {{ 
             background-color: #04060d; 
             color: #e2e4f6; 
             font-family: 'Manrope', sans-serif; 
             margin: 0; 
             padding: 0; 
-            text-shadow: 0 0 16px rgba(167, 170, 187, 0.6); 
+            text-shadow: 0 0 11px rgba(167, 170, 187, 0.4); 
         }}
 
-        /* 🌌 ドットのみ、さらに半分（芯0.75px、間隔35px）に縮小 */
+        /* 🌌 ドットのみ、前回お気に召した「ちょうどいいサイズ（芯1.5px、間隔35px）」 */
         .app-container {{
             background-image: 
-                radial-gradient(circle, rgba(129, 236, 255, 0.9) 0.75px, transparent 1.5px),
-                radial-gradient(circle, rgba(129, 236, 255, 0.2) 3px, transparent 6px),
+                radial-gradient(circle, rgba(129, 236, 255, 0.9) 1.5px, transparent 3px),
+                radial-gradient(circle, rgba(129, 236, 255, 0.2) 6px, transparent 12px),
                 linear-gradient(to bottom right, #020308, #0a0e1a, #020308); 
             background-size: 35px 35px, 35px 35px, 100% 100%;
             min-height: 100vh;
@@ -100,45 +100,45 @@ html_app = f"""
             border-top: 1px solid rgba(129, 236, 255, 0.3);
             border-bottom: 1px solid rgba(129, 236, 255, 0.1);
             border-radius: 8px;
-            box-shadow: 0 8px 32px rgba(0, 229, 255, 0.2);
+            box-shadow: 0 8px 22px rgba(0, 229, 255, 0.15); /* パネルのグローを70%に */
         }}
         
-        /* 🌌 見出しや専用フォントの強力なネオングローは維持 */
+        /* 🌌 見出しや専用フォントのネオングロー（70%にトーンダウン） */
         .neon-text {{ 
-            text-shadow: 0 0 30px rgba(0,229,255,0.8), 0 0 60px rgba(0,229,255,0.5); 
+            text-shadow: 0 0 21px rgba(0,229,255,0.55), 0 0 42px rgba(0,229,255,0.35); 
             font-family: 'Space Grotesk', sans-serif; 
             color: #81ecff; 
         }}
         .space-font {{ 
             font-family: 'Space Grotesk', sans-serif; 
-            text-shadow: 0 0 20px rgba(129, 236, 255, 0.8); 
+            text-shadow: 0 0 14px rgba(129, 236, 255, 0.55); 
         }}
         
-        /* 🌌 ボタンやスライダーの光も維持 */
+        /* 🌌 ボタンやスライダーの光（70%にトーンダウン） */
         .cyber-btn {{
             background: linear-gradient(to right, #81ecff, #00e3fd); color: #004d57; font-family: 'Space Grotesk', sans-serif; font-weight: 700;
             text-transform: uppercase; letter-spacing: 0.1em; border: none; 
-            box-shadow: 0 0 40px rgba(129,236,255,0.7); 
+            box-shadow: 0 0 28px rgba(129,236,255,0.5); 
             cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;
         }}
         .cyber-btn:hover {{ 
             transform: scale(1.02); 
-            box-shadow: 0 0 60px rgba(129,236,255,1.0); 
+            box-shadow: 0 0 42px rgba(129,236,255,0.7); 
         }}
         
         input[type=range] {{ -webkit-appearance: none; background: transparent; width: 100%; outline: none; }}
         input[type=range]::-webkit-slider-thumb {{
             -webkit-appearance: none; height: 16px; width: 16px; border-radius: 50%; background: #81ecff; cursor: pointer; 
-            box-shadow: 0 0 30px #81ecff; 
+            box-shadow: 0 0 21px #81ecff; 
             margin-top: -6px;
         }}
         input[type=range]::-webkit-slider-runnable-track {{
             width: 100%; height: 4px; cursor: pointer; background: rgba(129, 236, 255, 0.2); border-radius: 2px;
-            box-shadow: 0 0 10px rgba(129, 236, 255, 0.3); 
+            box-shadow: 0 0 7px rgba(129, 236, 255, 0.2); 
         }}
         .leaflet-container {{ background: #0a0e1a; font-family: 'Manrope', sans-serif; }}
         .ghost-marker {{ pointer-events: none !important; background: transparent !important; border: none !important; margin-left: -12px !important; margin-top: -12px !important; }}
-        .custom-radio input[type="radio"] {{ accent-color: #81ecff; cursor: pointer; filter: drop-shadow(0 0 10px #81ecff); }} 
+        .custom-radio input[type="radio"] {{ accent-color: #81ecff; cursor: pointer; filter: drop-shadow(0 0 7px #81ecff); }} 
     </style>
 </head>
 <body>
