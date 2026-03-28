@@ -249,7 +249,7 @@ html_app = f"""
         let filterRwy = "すべて";
 
         // Map Setup
-        const map = L.map('map', {{ zoomControl: false }}).setView([33.560, 130.460], 12);
+       const map = L.map('map', {{ zoomControl: false, attributionControl: false }}).setView([33.560, 130.460], 12);
         L.control.zoom({{ position: 'bottomright' }}).addTo(map);
         L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{{z}}/{{y}}/{{x}}', {{
             attribution: 'Esri', maxZoom: 19
