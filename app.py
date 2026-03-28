@@ -205,7 +205,10 @@ html_app = f"""
                     <div><div class="text-[#a7aabb] mb-1">予定日時</div><div class="text-xl text-white font-bold" id="cTime">--</div></div>
                 </div>
 
-                <div id="map" class="w-full h-[350px] rounded-lg border border-[#81ecff]/30 shadow-[0_0_20px_rgba(0,229,255,0.1)] z-0"></div>
+                <div class="relative w-full h-[350px] lg:h-[600px]">
+                        <div id="map" class="absolute inset-0 rounded-lg border border-[#81ecff]/30 shadow-[0_0_20px_rgba(0,229,255,0.1)]"></div>
+                        <div id="wind-hud" class="absolute bottom-6 left-6 z-[400] pointer-events-none"></div>
+                    </div>
             </div>
 
             <div class="lg:col-span-5 flex flex-col gap-4">
@@ -288,29 +291,28 @@ html_app = f"""
             </div>`;
         }}
 
-        function renderMapElements() {{
+        function renderMapElements() {
             markersLayer.clearLayers();
 
-            // 1. Wind Indicator (Animated Cyber Style)
-            // 風速(kt)に応じてアニメーション速度を変える（風が強いほど速く動く）
+            // 1. Wind Indicator (Fixed HUD Overlay)
             let animSpeed = Math.max(0.4, 2.5 - (windSpeed * 0.15)); 
-            
             let windSvg = `
-            <div style="width: 80px; height: 80px; margin-left: -40px; margin-top: -40px; pointer-events: none;">
-                <svg width="80" height="80" viewBox="0 0 80 80" style="transform: rotate(${{windDir}}deg); filter: drop-shadow(0 0 8px rgba(129,236,255,0.8));">
+            <div style="width: 80px; height: 80px; filter: drop-shadow(0 0 10px rgba(129,236,255,0.8));">
+                <svg width="80" height="80" viewBox="0 0 80 80" style="transform: rotate(${windDir}deg);">
                     <style>
-                        @keyframes windFlow {{
-                            0% {{ transform: translateY(-20px); opacity: 0; }}
-                            20% {{ opacity: 1; }}
-                            80% {{ opacity: 1; }}
-                            100% {{ transform: translateY(20px); opacity: 0; }}
-                        }}
-                        .w-line1 {{ animation: windFlow ${{animSpeed}}s linear infinite; }}
-                        .w-line2 {{ animation: windFlow ${{animSpeed * 1.3}}s linear infinite 0.2s; opacity: 0.6; }}
-                        .w-line3 {{ animation: windFlow ${{animSpeed * 0.8}}s linear infinite 0.4s; opacity: 0.6; }}
+                        @keyframes windFlow {
+                            0% { transform: translateY(-20px); opacity: 0; }
+                            20% { opacity: 1; }
+                            80% { opacity: 1; }
+                            100% { transform: translateY(20px); opacity: 0; }
+                        }
+                        .w-line1 { animation: windFlow ${animSpeed}s linear infinite; }
+                        .w-line2 { animation: windFlow ${animSpeed * 1.3}s linear infinite 0.2s; opacity: 0.6; }
+                        .w-line3 { animation: windFlow ${animSpeed * 0.8}s linear infinite 0.4s; opacity: 0.6; }
                     </style>
-                    <circle cx="40" cy="40" r="2" fill="#81ecff" />
+                    <circle cx="40" cy="40" r="30" fill="none" stroke="#81ecff" stroke-width="1" stroke-dasharray="2, 4" opacity="0.3" />
                     <circle cx="40" cy="40" r="15" fill="none" stroke="#81ecff" stroke-width="1" stroke-dasharray="2, 4" opacity="0.5" />
+                    <circle cx="40" cy="40" r="2" fill="#81ecff" />
                     
                     <g fill="none" stroke="#81ecff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path class="w-line1" d="M40,20 L40,60 M34,54 L40,60 L46,54" />
@@ -319,6 +321,8 @@ html_app = f"""
                     </g>
                 </svg>
             </div>`;
+            // マーカーではなく、画面固定のHUDレイヤーに直接HTMLを注入する
+            document.getElementById('wind-hud').innerHTML = windSvg;
 
             let windIcon = L.divIcon({{
                 html: windSvg,
