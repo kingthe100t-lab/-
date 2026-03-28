@@ -167,10 +167,11 @@ html_app = f"""
         function getShadowFilter(isGlow) {{
             let t = (simHour - 6) / 12, angle = t * Math.PI;
             let isNight = simHour < 6 || simHour >= 18;
-            let dist = isNight ? 0 : 10;
+            // 影を長く(20px)して、光の方向を強調
+            let dist = isNight ? 0 : 20; 
             let dx = -Math.cos(angle) * dist, dy = -Math.sin(angle) * dist;
             let glow = isGlow ? "drop-shadow(0 0 12px #81ecff) " : "";
-            return `${{glow}}drop-shadow(${{dx}}px ${{dy}}px 5px rgba(0,0,0,0.7))`;
+            return `${{glow}}drop-shadow(${{dx}}px ${{dy}}px 6px rgba(0,0,0,0.8))`;
         }}
 
         // ✈️ 飛行機SVG (44px拡大版)
@@ -207,7 +208,19 @@ html_app = f"""
             function getX(h) {{ return 70 + (h-12)*12; }}
             function getY(h) {{ let ha = 15*(h-12)*Math.PI/180; return 90 - Math.asin(Math.sin(lat)*Math.sin(decl)+Math.cos(lat)*Math.cos(decl)*Math.cos(ha))*180/Math.PI; }}
             let archPath = `M${{getX(rise)}},90 `; for(let i=Math.ceil(rise); i<=Math.floor(set); i++) archPath+=`L${{getX(i)}},${{getY(i)}} `; archPath+=`L${{getX(set)}},90`;
-            return `<div style="width:170px;height:130px;border-radius:12px;border:1px solid rgba(129,236,255,0.3);background:rgba(10,14,26,0.9);backdrop-filter:blur(10px);padding:10px;"><svg width="150" height="110" viewBox="0 0 140 100"><line x1="0" y1="90" x2="140" y2="90" stroke="#81ecff" opacity="0.4"/><path d="${{archPath}}" fill="none" stroke="#ffaa00" stroke-width="1.5" opacity="${{isNight?0.2:0.8}}"/><circle cx="${{getX(h)}}" cy="${{isNight?90:getY(h)}}" r="4" fill="#81ecff" style="filter:drop-shadow(0 0 5px #81ecff)" opacity="${{isNight?0:1}}"/><text x="70" y="85" fill="#81ecff" font-size="22" font-weight="900" text-anchor="middle" font-family="Space Grotesk" style="text-shadow:0 0 10px #81ecff">${{String(h).padStart(2,'0')}}:00</text></svg></div>`;
+            
+            return `<div style="width:170px;height:130px;border-radius:12px;border:1px solid rgba(129,236,255,0.3);background:rgba(10,14,26,0.9);backdrop-filter:blur(10px);padding:10px;">
+                <svg width="150" height="110" viewBox="0 0 140 100">
+                    <line x1="0" y1="90" x2="140" y2="90" stroke="#81ecff" opacity="0.4"/>
+                    <text x="${{getX(6)}}" y="98" fill="#a7aabb" font-size="7" text-anchor="middle">E</text>
+                    <text x="${{getX(12)}}" y="98" fill="#a7aabb" font-size="7" text-anchor="middle">S</text>
+                    <text x="${{getX(18)}}" y="98" fill="#a7aabb" font-size="7" text-anchor="middle">W</text>
+                    
+                    <path d="${{archPath}}" fill="none" stroke="#ffaa00" stroke-width="1.5" opacity="${{isNight?0.2:0.8}}"/>
+                    <circle cx="${{getX(h)}}" cy="${{isNight?90:getY(h)}}" r="4" fill="#81ecff" style="filter:drop-shadow(0 0 5px #81ecff)" opacity="${{isNight?0:1}}"/>
+                    <text x="70" y="85" fill="#81ecff" font-size="22" font-weight="900" text-anchor="middle" font-family="Space Grotesk" style="text-shadow:0 0 10px #81ecff">${{String(h).padStart(2,'0')}}:00</text>
+                </svg>
+            </div>`;
         }}
 
         // 🗺️ 全要素描画
