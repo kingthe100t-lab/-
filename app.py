@@ -300,15 +300,15 @@ html_app = f"""
             <div style="width: 80px; height: 80px; filter: drop-shadow(0 0 10px rgba(129,236,255,0.8));">
                 <svg width="80" height="80" viewBox="0 0 80 80" style="transform: rotate(${{windDir}}deg);">
                     <style>
-                        @keyframes windFlow {
-                            0% { transform: translateY(-20px); opacity: 0; }
-                            20% { opacity: 1; }
-                            80% { opacity: 1; }
-                            100% { transform: translateY(20px); opacity: 0; }
-                        }
-                        .w-line1 { animation: windFlow ${animSpeed}s linear infinite; }
-                        .w-line2 { animation: windFlow ${animSpeed * 1.3}s linear infinite 0.2s; opacity: 0.6; }
-                        .w-line3 { animation: windFlow ${animSpeed * 0.8}s linear infinite 0.4s; opacity: 0.6; }
+                        @keyframes windFlow {{
+                            0% {{ transform: translateY(-20px); opacity: 0; }}
+                            20% {{ opacity: 1; }}
+                            80% {{ opacity: 1; }}
+                            100% {{ transform: translateY(20px); opacity: 0; }}
+                        }}
+                        .w-line1 {{ animation: windFlow ${{animSpeed}}s linear infinite; }}
+                        .w-line2 {{ animation: windFlow ${{animSpeed * 1.3}}s linear infinite 0.2s; opacity: 0.6; }}
+                        .w-line3 {{ animation: windFlow ${{animSpeed * 0.8}}s linear infinite 0.4s; opacity: 0.6; }}
                     </style>
                     <circle cx="40" cy="40" r="30" fill="none" stroke="#81ecff" stroke-width="1" stroke-dasharray="2, 4" opacity="0.3" />
                     <circle cx="40" cy="40" r="15" fill="none" stroke="#81ecff" stroke-width="1" stroke-dasharray="2, 4" opacity="0.5" />
