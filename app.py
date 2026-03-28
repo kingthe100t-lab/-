@@ -15,7 +15,7 @@ st.markdown("""
         header {visibility: hidden;}
         footer {visibility: hidden;}
         .block-container {padding: 0px !important; max-width: 100% !important; overflow: hidden;}
-        iframe {border: none; width: 100vw; height: 100vh; overflow: hidden;}
+        iframe {border: none; width: 100vw; height: 100vh;}
     </style>
 """, unsafe_allow_html=True)
 
@@ -80,6 +80,8 @@ html_app = f"""
             margin: 0; 
             padding: 0; 
             text-shadow: 0 0 11px rgba(167, 170, 187, 0.4); 
+            height: 100vh; 
+            overflow: hidden; /* 外側のバグるスクロールを殺す */
         }}
 
         /* 🌌 ドットのみ、前回お気に召した「ちょうどいいサイズ（芯1.5px、間隔35px）」 */
@@ -89,7 +91,9 @@ html_app = f"""
                 radial-gradient(circle, rgba(129, 236, 255, 0.2) 1px, transparent 6px),
                 linear-gradient(to bottom right, #020308, #0a0e1a, #020308); 
             background-size: 35px 35px, 35px 35px, 100% 100%;
-            min-height: 100vh;
+            height: 100vh; /* min-height から height に変更 */
+            overflow-y: auto; /* ここ（内側）だけでスクロールさせる */
+            -webkit-overflow-scrolling: touch; /* スマホ特有の滑らかスクロール魔法 */
             padding: 1.5rem;
             box-sizing: border-box;
         }}
