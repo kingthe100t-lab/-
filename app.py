@@ -206,25 +206,25 @@ html_app = f"""
             let cosH0 = -Math.tan(lat)*Math.tan(decl), H0 = Math.acos(Math.max(-1,Math.min(1,cosH0)))*180/Math.PI;
             let rise = 12-H0/15, set = 12+H0/15, isNight = h < rise || h > set;
             
-            // X軸: 12時を中央(85)とする。描画幅を少し広げて調整
+            // 描画の中心を調整
             function getX(h) {{ return 85 + (h-12)*12; }}
             function getY(h) {{ let ha = 15*(h-12)*Math.PI/180; return 90 - Math.asin(Math.sin(lat)*Math.sin(decl)+Math.cos(lat)*Math.cos(decl)*Math.cos(ha))*180/Math.PI; }}
             
             let archPath = `M${{getX(rise)}},90 `; for(let i=Math.ceil(rise); i<=Math.floor(set); i++) archPath+=`L${{getX(i)}},${{getY(i)}} `; archPath+=`L${{getX(set)}},90`;
             
-            // viewBoxを "-10 0 190 110" に広げたことで、左右のE/Wが隠れなくなります
-            return `<div style="width:190px;height:130px;border-radius:12px;border:1px solid rgba(129,236,255,0.3);background:rgba(10,14,26,0.9);backdrop-filter:blur(10px);padding:5px;">
-                <svg width="180" height="110" viewBox="-10 0 190 110">
-                    <line x1="-10" y1="90" x2="180" y2="90" stroke="#81ecff" opacity="0.4"/>
+            // viewBoxを広げ、方位ラベルを強調
+            return `<div style="width:210px;height:130px;border-radius:12px;border:1px solid rgba(129,236,255,0.4);background:rgba(10,14,26,0.95);backdrop-filter:blur(10px);padding:5px;box-shadow:0 0 15px rgba(0,0,0,0.5);">
+                <svg width="200" height="110" viewBox="-30 0 230 110">
+                    <line x1="-30" y1="90" x2="200" y2="90" stroke="#81ecff" opacity="0.4"/>
                     
-                    <text x="${{getX(6)}}" y="102" fill="#81ecff" font-size="9" font-weight="bold" text-anchor="middle">E</text>
-                    <text x="${{getX(12)}}" y="102" fill="#81ecff" font-size="9" font-weight="bold" text-anchor="middle">S</text>
-                    <text x="${{getX(18)}}" y="102" fill="#81ecff" font-size="9" font-weight="bold" text-anchor="middle">W</text>
+                    <text x="${{getX(6)}}" y="104" fill="#81ecff" font-size="11" font-weight="900" text-anchor="middle">E</text>
+                    <text x="${{getX(12)}}" y="104" fill="#81ecff" font-size="11" font-weight="900" text-anchor="middle">S</text>
+                    <text x="${{getX(18)}}" y="104" fill="#81ecff" font-size="11" font-weight="900" text-anchor="middle">W</text>
                     
-                    <path d="${{archPath}}" fill="none" stroke="#ffaa00" stroke-width="2" opacity="${{isNight?0.2:0.8}}"/>
+                    <path d="${{archPath}}" fill="none" stroke="#ffaa00" stroke-width="2.5" opacity="${{isNight?0.2:0.8}}"/>
                     <circle cx="${{getX(h)}}" cy="${{isNight?90:getY(h)}}" r="5" fill="#fff" style="filter:drop-shadow(0 0 8px #ffaa00)" opacity="${{isNight?0:1}}"/>
                     
-                    <text x="85" y="80" fill="#81ecff" font-size="24" font-weight="900" text-anchor="middle" font-family="Space Grotesk" style="text-shadow:0 0 12px #81ecff">${{String(h).padStart(2,'0')}}:00</text>
+                    <text x="85" y="75" fill="#81ecff" font-size="26" font-weight="900" text-anchor="middle" font-family="Space Grotesk" style="text-shadow:0 0 15px #81ecff">${{String(h).padStart(2,'0')}}:00</text>
                 </svg>
             </div>`;
         }}
