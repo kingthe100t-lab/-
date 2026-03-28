@@ -291,7 +291,7 @@ html_app = f"""
             </div>`;
         }}
 
-        function renderMapElements() {
+        function renderMapElements() {{
             markersLayer.clearLayers();
 
             // 1. Wind Indicator (Fixed HUD Overlay)
