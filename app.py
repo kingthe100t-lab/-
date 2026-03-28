@@ -71,8 +71,8 @@ html_app = f"""
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/leaflet-ant-path@1.3.0/dist/leaflet-ant-path.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Manrope:wght@300;400;500;600;700&display=swap" rel="stylesheet">
- <style>
-        /* 🌌 全体の文字にうっすらとした光のにじみを追加（グロー2倍） */
+<style>
+        /* 🌌 全体の文字にうっすらとした光のにじみを追加（グロー2倍維持） */
         body {{ 
             background-color: #04060d; 
             color: #e2e4f6; 
@@ -82,13 +82,13 @@ html_app = f"""
             text-shadow: 0 0 16px rgba(167, 170, 187, 0.6); 
         }}
 
-        /* 🌌 ドットの大型化と発光効果（ドットサイズ2倍、グロー2倍） */
+        /* 🌌 ドットのみ、倍にする前の「ちょうどいいサイズ（芯1.5px、間隔35px）」に復元 */
         .app-container {{
             background-image: 
-                radial-gradient(circle, rgba(129, 236, 255, 0.9) 3px, transparent 6px),
-                radial-gradient(circle, rgba(129, 236, 255, 0.3) 12px, transparent 24px),
+                radial-gradient(circle, rgba(129, 236, 255, 0.9) 1.5px, transparent 3px),
+                radial-gradient(circle, rgba(129, 236, 255, 0.2) 6px, transparent 12px),
                 linear-gradient(to bottom right, #020308, #0a0e1a, #020308); 
-            background-size: 50px 50px, 50px 50px, 100% 100%;
+            background-size: 35px 35px, 35px 35px, 100% 100%;
             min-height: 100vh;
             padding: 1.5rem;
             box-sizing: border-box;
@@ -103,7 +103,7 @@ html_app = f"""
             box-shadow: 0 8px 32px rgba(0, 229, 255, 0.2);
         }}
         
-        /* 🌌 見出しや専用フォントに強力なネオングロー（グロー2倍） */
+        /* 🌌 見出しや専用フォントの強力なネオングローは維持 */
         .neon-text {{ 
             text-shadow: 0 0 30px rgba(0,229,255,0.8), 0 0 60px rgba(0,229,255,0.5); 
             font-family: 'Space Grotesk', sans-serif; 
@@ -114,7 +114,7 @@ html_app = f"""
             text-shadow: 0 0 20px rgba(129, 236, 255, 0.8); 
         }}
         
-        /* 🌌 ボタンやスライダーの光も倍増 */
+        /* 🌌 ボタンやスライダーの光も維持 */
         .cyber-btn {{
             background: linear-gradient(to right, #81ecff, #00e3fd); color: #004d57; font-family: 'Space Grotesk', sans-serif; font-weight: 700;
             text-transform: uppercase; letter-spacing: 0.1em; border: none; 
