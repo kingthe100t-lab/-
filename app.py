@@ -105,7 +105,7 @@ html_app = f"""
         
         /* 🌌 見出しや専用フォントのネオングロー（70%にトーンダウン） */
         .neon-text {{ 
-            text-shadow: 0 0 21px rgba(0,229,255,0.55), 0 0 42px rgba(0,229,255,0.35); 
+            text-shadow: 0 0 42px rgba(0,229,255,0.55), 0 0 42px rgba(0,229,255,0.35); 
             font-family: 'Space Grotesk', sans-serif; 
             color: #81ecff; 
         }}
