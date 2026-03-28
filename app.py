@@ -250,11 +250,12 @@ html_app = f"""
             if (isNight) {{
                 overlay.style.background = "transparent";
             }} else {{
-                // 太陽の方角（角度）を計算
-                // 6時(E)=0度, 12時(S)=90度, 18時(W)=180度
-                let angle = t * 180; 
-                // CSSのlinear-gradientに変換（太陽がある方向から光が来るように）
-                overlay.style.background = `linear-gradient(${{angle + 90}}deg, rgba(255, 140, 0, 0.6) 0%, rgba(255, 140, 0, 0.1) 50%, transparent 100%)`;
+                // 太陽の方角（CSSグラデーション用の正しい角度計算）
+                // 朝6時(東/右) = 270deg, 昼12時(南/下) = 360(0)deg, 夕方18時(西/左) = 90deg
+                let cssAngle = 270 + (t * 180); 
+                
+                // 修正版：正しい方角からオレンジ色の光が差し込む
+                overlay.style.background = `linear-gradient(${{cssAngle}}deg, rgba(255, 140, 0, 0.6) 0%, rgba(255, 140, 0, 0.1) 50%, transparent 100%)`;
             }}
 
             spots.forEach(spot => {{
