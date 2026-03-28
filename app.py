@@ -390,20 +390,34 @@ html_app = f"""
                 const res = await fetch(url);
                 const data = await res.json();
                 
-                let targetDate = new Date();
-                targetDate.setHours(targetDate.getHours() + 9);
-                if (simDay === "明日") targetDate.setDate(targetDate.getDate() + 1);
+                // ▼ 修正：日本時間(JST)の正確な日付文字列を生成する
+                let jstDate = new Date(new Date().toLocaleString("en-US", {{timeZone: "Asia/Tokyo"}}));
+                if (simDay === "明日") {{
+                    jstDate.setDate(jstDate.getDate() + 1);
+                }}
                 
-                let isoStr = targetDate.toISOString().split('T')[0] + "T" + String(simHour).padStart(2, '0') + ":00";
-                let idx = data.hourly.time.indexOf(isoStr);
+                let yyyy = jstDate.getFullYear();
+                let mm = String(jstDate.getMonth() + 1).padStart(2, '0');
+                let dd = String(jstDate.getDate()).padStart(2, '0');
+                let hh = String(simHour).padStart(2, '0');
+                
+                // APIのフォーマット(YYYY-MM-DDTHH:00)にピタリと合わせる
+                let targetTimeStr = `${{yyyy}}-${{mm}}-${{dd}}T${{hh}}:00`;
+                let idx = data.hourly.time.indexOf(targetTimeStr);
                 
                 if (idx !== -1) {{
                     windDir = data.hourly.winddirection_10m[idx];
-                    windSpeed = Math.round(data.hourly.windspeed_10m[idx] * 0.539957);
-                }} else {{ fallbackWeather(); }}
-            }} catch(e) {{ fallbackWeather(); }}
+                    windSpeed = Math.round(data.hourly.windspeed_10m[idx] * 0.539957); // km/h を kt に変換
+                }} else {{ 
+                    fallbackWeather(); 
+                }}
+            }} catch(e) {{ 
+                fallbackWeather(); 
+            }}
             
+            // 風向から運用滑走路を判定 (90度〜270度の南風なら16、それ以外は34)
             currentRwy = (windDir >= 90 && windDir <= 270) ? "16" : "34";
+            
             updateUI();
             renderMapElements();
             updateAntPath();
