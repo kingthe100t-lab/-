@@ -208,7 +208,7 @@ html_app = f"""
                 <div class="relative w-full h-[350px] lg:h-[600px]">
                         <div id="map" class="absolute inset-0 rounded-lg border border-[#81ecff]/30 shadow-[0_0_20px_rgba(0,229,255,0.1)]"></div>
                         <div id="wind-hud" class="absolute bottom-6 left-6 z-[400] pointer-events-none"></div>
-                    </div>
+                </div>
             </div>
 
             <div class="lg:col-span-5 flex flex-col gap-4">
