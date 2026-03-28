@@ -71,7 +71,7 @@ html_app = f"""
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/leaflet-ant-path@1.3.0/dist/leaflet-ant-path.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Manrope:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <style>
+  <style>
         /* 🌌 全体の文字にうっすらとした光のにじみを追加（グロー2倍） */
         body { 
             background-color: #04060d; 
