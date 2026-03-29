@@ -340,7 +340,7 @@ html_app = f"""
                     return;
                 }}
                 
-                const res = await fetch(url)
+                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${{apiKey}}`, {{
                 const data = await res.json(); 
                 
                 // API側からエラーが返ってきた場合
