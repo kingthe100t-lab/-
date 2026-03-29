@@ -174,7 +174,7 @@ html_app = f"""
                     <div class="glass-panel p-6 flex-1 flex flex-col gap-4 min-h-[300px]">
                         <h3 class="text-[#81ecff] font-bold text-sm tracking-widest">TACTICAL BRIEFING</h3>
                         <button class="cyber-btn w-full py-3 text-sm" onclick="requestBriefing()">GET AI ADVICE</button>
-                        <div id="ai-briefing" class="text-xs leading-relaxed overflow-y-auto flex-1 bg-black/30 p-4 rounded border border-white/5">Waiting for request...</div>
+                        <div id="ai-briefing" class="text-xs leading-relaxed overflow-y-auto flex-1 bg-black/30 p-4 rounded border border-white/5 text-white">Waiting for request...</div>
                     </div>
                 </div>
             </div>
