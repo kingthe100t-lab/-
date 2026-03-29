@@ -150,6 +150,7 @@ html_app = f"""
 
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
                 <div class="lg:col-span-7 flex flex-col gap-4">
+                    
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div class="glass-panel p-4 flex items-center gap-4">
                             <span class="text-[#81ecff] text-[10px] font-bold tracking-widest">DAY</span>
@@ -178,13 +179,13 @@ html_app = f"""
                     </div>
                     
                     <div class="glass-panel p-4 grid grid-cols-4 gap-2 text-center text-[10px] tracking-tighter">
-    <div><div class="text-[#a7aabb]">風向</div><div class="text-lg font-bold text-white" id="wDir">--</div></div>
-    <div><div class="text-[#a7aabb]">風速</div><div class="text-lg font-bold text-white" id="wSpd">--</div></div>
-    <div><div class="text-[#a7aabb]">運用滑走路</div><div class="text-lg font-bold text-[#00e3fd]" id="cRwy">--</div></div>
-    <div><div class="text-[#a7aabb]">予定</div><div class="text-lg font-bold text-white" id="cTime">--</div></div>
-</div>
+                        <div><div class="text-[#a7aabb]">風向</div><div class="text-lg font-bold text-white" id="wDir">--</div></div>
+                        <div><div class="text-[#a7aabb]">風速</div><div class="text-lg font-bold text-white" id="wSpd">--</div></div>
+                        <div><div class="text-[#a7aabb]">運用滑走路</div><div class="text-lg font-bold text-[#00e3fd]" id="cRwy">--</div></div>
+                        <div><div class="text-[#a7aabb]">予定</div><div class="text-lg font-bold text-white" id="cTime">--</div></div>
+                    </div>
 
-                    <<div class="relative w-full h-[400px] lg:h-[600px]">
+                    <div class="relative w-full h-[400px] lg:h-[600px]">
                         <div id="map" class="absolute inset-0 rounded-xl border border-[#81ecff]/30 shadow-2xl"></div>
                         <div id="sun-glow-overlay" style="position: absolute; inset: 0; pointer-events: none; border-radius: 12px;"></div>
                         <div id="wind-hud" class="absolute bottom-6 left-6 z-[400] pointer-events-none"></div>
