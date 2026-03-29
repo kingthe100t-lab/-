@@ -150,17 +150,29 @@ html_app = f"""
 
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
                 <div class="lg:col-span-7 flex flex-col gap-4">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div class="glass-panel p-4 flex items-center gap-4">
-                            <span class="text-[#81ecff] text-xs font-bold tracking-widest">RWY FILTER</span>
-                            <div class="flex gap-3 text-sm text-white">
-    <label><input type="radio" name="rwy" value="すべて" checked onchange="changeFilter(this.value)"> ALL</label>
-    <label><input type="radio" name="rwy" value="16" onchange="changeFilter(this.value)"> 16</label>
-    <label><input type="radio" name="rwy" value="34" onchange="changeFilter(this.value)"> 34</label>
-</div>
+                            <span class="text-[#81ecff] text-[10px] font-bold tracking-widest">DAY</span>
+                            <div class="flex gap-3 text-xs text-white">
+                                <label class="flex items-center gap-1 cursor-pointer"><input type="radio" name="day" value="本日" checked onchange="changeDay(this.value)"> TODAY</label>
+                                <label class="flex items-center gap-1 cursor-pointer"><input type="radio" name="day" value="明日" onchange="changeDay(this.value)"> TOMORROW</label>
+                            </div>
                         </div>
+
+                        <div class="glass-panel p-4 flex items-center gap-4">
+                            <span class="text-[#81ecff] text-[10px] font-bold tracking-widest">RWY</span>
+                            <div class="flex gap-3 text-xs text-white">
+                                <label class="flex items-center gap-1 cursor-pointer"><input type="radio" name="rwy" value="すべて" checked onchange="changeFilter(this.value)"> ALL</label>
+                                <label class="flex items-center gap-1 cursor-pointer"><input type="radio" name="rwy" value="16" onchange="changeFilter(this.value)"> 16</label>
+                                <label class="flex items-center gap-1 cursor-pointer"><input type="radio" name="rwy" value="34" onchange="changeFilter(this.value)"> 34</label>
+                            </div>
+                        </div>
+
                         <div class="glass-panel p-4 flex flex-col gap-2">
-                            <div class="flex justify-between text-xs text-[#81ecff] font-bold"><span>TIMELINE</span><span id="hourVal">12:00</span></div>
+                            <div class="flex justify-between text-[10px] text-[#81ecff] font-bold">
+                                <span>TIMELINE</span>
+                                <span id="hourVal" class="text-white">12:00</span>
+                            </div>
                             <input type="range" min="7" max="22" value="12" oninput="changeHourLive(this.value)" onchange="changeHour(this.value)">
                         </div>
                     </div>
