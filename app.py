@@ -358,6 +358,13 @@ html_app = f"""
             document.getElementById('spotLens').innerText = currentSpot['焦点距離'];
             document.getElementById('wDir').innerText = windDir+'°'; document.getElementById('wSpd').innerText = windSpeed+'kt';
             document.getElementById('cRwy').innerText = 'RWY '+currentRwy; document.getElementById('cTime').innerText = simDay+' '+simHour+':00';
+            let arrow = document.getElementById('wind-arrow');
+            if(arrow) {{
+                // 風が吹いていく方向（風向 + 180度）に矢印を向ける
+                arrow.style.transform = `rotate(${{windDir + 180}}deg)`;
+            }}
+            let wText = document.getElementById('wind-dir-text');
+            if(wText) wText.innerText = windDir + '°';
         }}
 
         // Gemini 1.5 APIへのリクエスト（エラーキャッチ付き）
