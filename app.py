@@ -164,7 +164,7 @@ html_app = f"""
                 <div class="lg:col-span-5 flex flex-col gap-4">
                     <div class="glass-panel p-6 border-l-4 border-[#81ecff]">
                         <div class="text-[#81ecff] text-[10px] font-bold tracking-widest uppercase mb-1">Spot Analysis</div>
-                        <h3 class="text-2xl font-bold mb-4" id="spotName">--</h3>
+                        <h3 class="text-2xl font-bold mb-4 text-white" id="spotName">--</h3>
                         <p id="spotDesc" class="text-sm leading-relaxed mb-4 text-[#e2e4f6]">--</p>
                         <div class="grid grid-cols-2 gap-4 text-xs">
                             <div><span class="text-[#a7aabb] block">BEST TIME</span><span id="spotTime">--</span></div>
@@ -332,10 +332,33 @@ html_app = f"""
         async function requestBriefing() {{
             document.getElementById('ai-briefing').innerText = "STRATEGIZING...";
             const prompt = `福岡空港の「${{currentSpot['スポット']}}」での撮影アドバイス。${{simDay}}${{simHour}}時、風向${{windDir}}度、RWY${{currentRwy}}運用。焦点距離${{currentSpot['焦点距離']}}。短くマニアックに。`;
+            
             try {{
-                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${{apiKey}}`, {{method:'POST',headers:{{'Content-Type':'application/json'}},body:JSON.stringify({{contents:[{{parts:[{{text:prompt}}]}}]}})}});
-                const data = await res.json(); document.getElementById('ai-briefing').innerText = data.candidates[0].content.parts[0].text;
-            }} catch(e) {{ document.getElementById('ai-briefing').innerText = "OFFLINE"; }}
+                // APIキーが空っぽの場合は警告を出す
+                if (!apiKey || apiKey === "") {{
+                    document.getElementById('ai-briefing').innerHTML = "<span style='color:#ffaa00;'>⚠️ エラー: GEMINI_API_KEY が設定されていません。</span>";
+                    return;
+                }}
+                
+                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${{apiKey}}`, {{
+                    method: 'POST',
+                    headers: {{ 'Content-Type': 'application/json' }},
+                    body: JSON.stringify({{ contents: [{{ parts: [{{ text: prompt }}] }}] }})
+                }});
+                
+                const data = await res.json(); 
+                
+                // API側からエラーが返ってきた場合
+                if (data.error) {{
+                    document.getElementById('ai-briefing').innerHTML = `<span style='color:#ffaa00;'>⚠️ APIエラー: ${{data.error.message}}</span>`;
+                }} else {{
+                    // 正常に取得できた場合
+                    document.getElementById('ai-briefing').innerText = data.candidates[0].content.parts[0].text;
+                }}
+            }} catch(e) {{ 
+                // 通信自体が失敗した場合
+                document.getElementById('ai-briefing').innerHTML = `<span style='color:#ffaa00;'>⚠️ 通信エラー: ${{e.message}}</span>`; 
+            }}
         }}
 
         function changeFilter(v) {{ filterRwy=v; renderMapElements(); }}
