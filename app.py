@@ -229,8 +229,7 @@ html_app = f"""
         const depPath16 = {json.dumps(dep_path_16)}; const depPath34 = {json.dumps(dep_path_34)};
         const apiKey = "{api_key}";
 
-        let currentSpot = spots[0], planeLat = 33.585, planeLng = 130.445, simDay = "本日", simHour = 12, windDir = 160, windSpeed = 6, currentRwy = "16", filterRwy = "すべて";
-
+        let currentSpot = spots[0], planeLat = 33.585, planeLng = 130.445, simDay = "本日", simHour = 12, windDir = 160, windSpeed = 6, currentRwy = "16", filterRwy = "すべて", weatherCond = "--";
         // 地図初期化（クレジット・ズームコントロール非表示）
         const map = L.map('map', {{ zoomControl: false, attributionControl: false }}).setView([33.560, 130.460], 13);
         L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{{z}}/{{y}}/{{x}}').addTo(map);
@@ -238,6 +237,21 @@ html_app = f"""
         let markersLayer = L.layerGroup().addTo(map), approachLayer = null, departureLayer = null;
 
         map.on('click', (e) => {{ planeLat = e.latlng.lat; planeLng = e.latlng.lng; renderMapElements(); }});
+　　　　// 天気アイコンの判定（WMO気象コード）
+        function getWeatherEmoji(code) {{
+            if (code === 0) return "☀️晴れ";
+            if (code === 1) return "🌤️薄曇";
+            if (code === 2) return "⛅曇り";
+            if (code === 3) return "☁️本曇";
+            if (code >= 45 && code <= 48) return "🌫️霧";
+            if (code >= 51 && code <= 57) return "🌧️霧雨";
+            if (code >= 61 && code <= 67) return "☔雨";
+            if (code >= 71 && code <= 77) return "❄️雪";
+            if (code >= 80 && code <= 82) return "☔にわか雨";
+            if (code >= 85 && code <= 86) return "❄️雪";
+            if (code >= 95 && code <= 99) return "⚡雷雨";
+            return "❓不明";
+        }}
 
         // ☀️ 影のフィルタ計算（太陽の反対方向へ伸ばす）
         function getShadowFilter(isGlow) {{
@@ -351,17 +365,26 @@ html_app = f"""
         }}
 
         // 天気・風向きの取得
+        // 天気・風向きの取得
         async function updateWeather() {{
             try {{
-                const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=33.585&longitude=130.445&hourly=winddirection_10m,windspeed_10m&timezone=Asia%2FTokyo`);
+                const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=33.585&longitude=130.445&hourly=winddirection_10m,windspeed_10m,weathercode&timezone=Asia%2FTokyo`);
                 const data = await res.json();
-                let now = new Date(new Date().toLocaleString("en-US", {{timeZone:"Asia/Tokyo"}})); if(simDay==="明日") now.setDate(now.getDate()+1);
+                let now = new Date(new Date().toLocaleString("en-US", {{timeZone:"Asia/Tokyo"}})); 
+                if(simDay==="明日") now.setDate(now.getDate()+1);
                 let target = `${{now.getFullYear()}}-${{String(now.getMonth()+1).padStart(2,'0')}}-${{String(now.getDate()).padStart(2,'0')}}T${{String(simHour).padStart(2,'0')}}:00`;
                 let idx = data.hourly.time.indexOf(target);
-                if(idx!==-1) {{ windDir=data.hourly.winddirection_10m[idx]; windSpeed=Math.round(data.hourly.windspeed_10m[idx]*0.54); }}
-            }} catch(e) {{ windDir=160; windSpeed=6; }}
+                if(idx!==-1) {{ 
+                    windDir=data.hourly.winddirection_10m[idx]; 
+                    windSpeed=Math.round(data.hourly.windspeed_10m[idx]*0.54); 
+                    weatherCond = getWeatherEmoji(data.hourly.weathercode[idx]); // 天気を取得！
+                }}
+            }} catch(e) {{ 
+                windDir=160; windSpeed=6; weatherCond="☀️晴れ"; 
+            }}
             currentRwy = (windDir>=90 && windDir<=270) ? "16" : "34";
-            updateUI(); renderMapElements();
+            updateUI(); 
+            renderMapElements();
         }}
 
         // UI情報の更新
@@ -370,13 +393,18 @@ html_app = f"""
             document.getElementById('spotDesc').innerText = currentSpot['特徴'];
             document.getElementById('spotTime').innerText = currentSpot['ベスト時間'];
             document.getElementById('spotLens').innerText = currentSpot['焦点距離'];
-            document.getElementById('wDir').innerText = windDir+'°'; document.getElementById('wSpd').innerText = windSpeed+'kt';
-            document.getElementById('cRwy').innerText = 'RWY '+currentRwy; document.getElementById('cTime').innerText = simDay+' '+simHour+':00';
+            document.getElementById('wDir').innerText = windDir+'°'; 
+            document.getElementById('wSpd').innerText = windSpeed+'kt';
+            document.getElementById('cRwy').innerText = 'RWY '+currentRwy; 
+            document.getElementById('cTime').innerText = simDay+' '+simHour+':00';
+            
+            // 天気を画面に表示！
+            let wCondEl = document.getElementById('wCond');
+            if(wCondEl) wCondEl.innerText = weatherCond;
+
+            // 右上のWINDメーターの回転
             let arrow = document.getElementById('wind-arrow');
-            if(arrow) {{
-                // 風が吹いていく方向（風向 + 180度）に矢印を向ける
-                arrow.style.transform = `rotate(${{windDir + 180}}deg)`;
-            }}
+            if(arrow) arrow.style.transform = `rotate(${{windDir + 180}}deg)`;
             let wText = document.getElementById('wind-dir-text');
             if(wText) wText.innerText = windDir + '°';
         }}
@@ -384,7 +412,7 @@ html_app = f"""
         // Gemini 1.5 APIへのリクエスト（エラーキャッチ付き）
         async function requestBriefing() {{
             document.getElementById('ai-briefing').innerText = "STRATEGIZING...";
-            const prompt = `福岡空港の「${{currentSpot['スポット']}}」での撮影アドバイス。${{simDay}}${{simHour}}時、風向${{windDir}}度、RWY${{currentRwy}}運用。焦点距離${{currentSpot['焦点距離']}}。短くマニアックに。`;
+            const prompt = `福岡空港の「${{currentSpot['スポット']}}」での撮影アドバイス。${{simDay}}${{simHour}}時、天気は${{weatherCond}}、風向${{windDir}}度、RWY${{currentRwy}}運用。焦点距離${{currentSpot['焦点距離']}}。短くマニアックに。`;
             
             try {{
                 if (!apiKey || apiKey === "") {{
