@@ -97,8 +97,8 @@ html_app = f"""
             -webkit-overflow-scrolling: touch; 
             padding: 1.5rem; 
             background-image: 
-                radial-gradient(circle, rgba(129, 236, 255, 0.7) 1.5px, transparent 3px),
-                radial-gradient(circle, rgba(129, 236, 255, 0.15) 6px, transparent 12px),
+                radial-gradient(circle, rgba(129, 236, 255, 0.7) 0.6px, transparent 1px),
+                radial-gradient(circle, rgba(129, 236, 255, 0.15) 1px, transparent 3px),
                 linear-gradient(to bottom right, #020308, #0a0e1a, #020308); 
             background-size: 35px 35px, 35px 35px, 100% 100%;
         }}
