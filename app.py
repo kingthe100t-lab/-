@@ -153,11 +153,11 @@ html_app = f"""
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div class="glass-panel p-4 flex items-center gap-4">
                             <span class="text-[#81ecff] text-xs font-bold tracking-widest">RWY FILTER</span>
-                            <div class="flex gap-3 text-sm">
-                                <label><input type="radio" name="rwy" value="すべて" checked onchange="changeFilter(this.value)"> ALL</label>
-                                <label><input type="radio" name="rwy" value="16" onchange="changeFilter(this.value)"> 16</label>
-                                <label><input type="radio" name="rwy" value="34" onchange="changeFilter(this.value)"> 34</label>
-                            </div>
+                            <div class="flex gap-3 text-sm text-white">
+    <label><input type="radio" name="rwy" value="すべて" checked onchange="changeFilter(this.value)"> ALL</label>
+    <label><input type="radio" name="rwy" value="16" onchange="changeFilter(this.value)"> 16</label>
+    <label><input type="radio" name="rwy" value="34" onchange="changeFilter(this.value)"> 34</label>
+</div>
                         </div>
                         <div class="glass-panel p-4 flex flex-col gap-2">
                             <div class="flex justify-between text-xs text-[#81ecff] font-bold"><span>TIMELINE</span><span id="hourVal">12:00</span></div>
