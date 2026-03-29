@@ -172,11 +172,21 @@ html_app = f"""
                         <div><div class="text-[#a7aabb]">予定</div><div class="text-lg font-bold" id="cTime">--</div></div>
                     </div>
 
-                    <div class="relative w-full h-[400px] lg:h-[600px]">
+                    <<div class="relative w-full h-[400px] lg:h-[600px]">
                         <div id="map" class="absolute inset-0 rounded-xl border border-[#81ecff]/30 shadow-2xl"></div>
-                        <div id="sun-glow-overlay" style="position: absolute; inset: 0; z-index: 400; pointer-events: none; border-radius: 12px;"></div>
+                        <div id="sun-glow-overlay" style="position: absolute; inset: 0; pointer-events: none; border-radius: 12px;"></div>
                         <div id="wind-hud" class="absolute bottom-6 left-6 z-[400] pointer-events-none"></div>
-                    </div>
+                        
+                        <div id="real-wind-hud" class="absolute top-4 right-4 z-[400] pointer-events-none glass-panel p-3 flex flex-col items-center justify-center gap-1 shadow-lg border border-[#ffaa00]/40" style="background: rgba(10,14,26,0.8);">
+                            <span class="text-[9px] text-[#ffaa00] font-bold tracking-widest uppercase">WIND</span>
+                            <div style="width: 36px; height: 36px; position: relative; display: flex; align-items: center; justify-content: center;">
+                                <svg id="wind-arrow" width="28" height="28" viewBox="0 0 24 24" style="transition: transform 0.5s ease; filter: drop-shadow(0 0 5px #ffaa00);">
+                                    <path d="M12 2L19 21l-7-4-7 4 7-19z" fill="#ffaa00" />
+                                </svg>
+                            </div>
+                            <span id="wind-dir-text" class="text-white text-xs font-bold font-mono">--°</span>
+                        </div>
+                        </div>
                 </div>
 
                 <div class="lg:col-span-5 flex flex-col gap-4">
