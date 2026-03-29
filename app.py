@@ -90,22 +90,40 @@ html_app = f"""
         
         .glass-panel {{ background: rgba(15, 20, 35, 0.6); backdrop-filter: blur(20px); border: 1px solid rgba(129, 236, 255, 0.2); border-radius: 12px; }}
         .neon-text {{ color: #81ecff; text-shadow: 0 0 15px rgba(129,236,255,0.6); font-family: 'Space Grotesk', sans-serif; }}
+        /* 既存のCSSコードが並んでいる場所です... */
         .cyber-btn {{ background: linear-gradient(90deg, #81ecff, #00e3fd); color: #004d57; font-weight: 700; border-radius: 6px; }}
         
-        /* ▼ 地図の白枠対策 */
-        .leaflet-container {{ background: #0a0e1a !important; outline: none !important; }}
+        /* ▼▼▼ 地図を明るくするための修正ブロック ▼▼▼ */
+        /* 地図タイルの輝度とコントラストを上げる */
+        .leaflet-tile-container {{
+            filter: brightness(110%) contrast(115%);
+        }}
+        /* mix-blend-mode: screen で地図に明るさを加算 */
+        .leaflet-container {{
+            background: #0a101f !important; /* 背景色も少し明るく */
+            mix-blend-mode: screen;
+            outline: none !important;
+        }}
         .leaflet-container * {{ outline: none !important; -webkit-tap-highlight-color: transparent !important; }}
+        /* ▲▲▲ ここまで ▲▲▲ */
         
         input[type=range] {{ -webkit-appearance: none; background: rgba(129,236,255,0.2); height: 4px; border-radius: 2px; width: 100%; }}
         input[type=range]::-webkit-slider-thumb {{ -webkit-appearance: none; height: 18px; width: 18px; border-radius: 50%; background: #81ecff; box-shadow: 0 0 10px #81ecff; cursor: pointer; }}
 
-        /* ▼ 太陽の光の層 */
+        /* 太陽HUDの背景を少し明るく */
+        #wind-hud {{
+            background: rgba(30, 45, 70, 0.8) !important;
+            border: 1px solid rgba(129, 236, 255, 0.4) !important;
+        }}
+
+        /* ▼▼▼ 光の層の見た目を変更 ▼▼▼ */
         #sun-glow-overlay {{
             transition: background 0.5s ease;
-            mix-blend-mode: overlay;
+            mix-blend-mode: screen; /* overlay から screen に変更して明るさを加算 */
             z-index: 400;
-            opacity: 0.8;
+            opacity: 1.0; /* 不透明度を上げる */
         }}
+        /* ▲▲▲ ここまで ▲▲▲ */
 
         /* ▼ スマホ・タブレット用（768px以下）の縮小ルール */
         @media (max-width: 768px) {{
