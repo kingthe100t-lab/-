@@ -166,11 +166,11 @@ html_app = f"""
                     </div>
                     
                     <div class="glass-panel p-4 grid grid-cols-4 gap-2 text-center text-[10px] tracking-tighter">
-                        <div><div class="text-[#a7aabb]">風向</div><div class="text-lg font-bold" id="wDir">--</div></div>
-                        <div><div class="text-[#a7aabb]">風速</div><div class="text-lg font-bold" id="wSpd">--</div></div>
-                        <div><div class="text-[#a7aabb]">運用滑走路</div><div class="text-lg font-bold text-[#00e3fd]" id="cRwy">--</div></div>
-                        <div><div class="text-[#a7aabb]">予定</div><div class="text-lg font-bold" id="cTime">--</div></div>
-                    </div>
+    <div><div class="text-[#a7aabb]">風向</div><div class="text-lg font-bold text-white" id="wDir">--</div></div>
+    <div><div class="text-[#a7aabb]">風速</div><div class="text-lg font-bold text-white" id="wSpd">--</div></div>
+    <div><div class="text-[#a7aabb]">運用滑走路</div><div class="text-lg font-bold text-[#00e3fd]" id="cRwy">--</div></div>
+    <div><div class="text-[#a7aabb]">予定</div><div class="text-lg font-bold text-white" id="cTime">--</div></div>
+</div>
 
                     <<div class="relative w-full h-[400px] lg:h-[600px]">
                         <div id="map" class="absolute inset-0 rounded-xl border border-[#81ecff]/30 shadow-2xl"></div>
