@@ -76,42 +76,50 @@ html_app = f"""
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@700&family=Manrope:wght@400;700&display=swap" rel="stylesheet">
     <style>
     <style>
-        html, body {{ background: #04060d; ... }} /* 既存のコード */
-        .app-container {{ ... }} /* 既存のコード */
-
-        /* ▼ ここに以下の3行を追記してください ▼ */
-        #sun-glow-overlay {{
-            transition: background 0.5s ease;
-            mix-blend-mode: screen;
-            z-index: 400;
-            opacity: 0.8; /* レイヤー自体の透明度を調整 */
-        }}
-        /* ▲ ここまで ▲ */
-
-        .glass-panel {{ ... }} /* 既存のコード */
         html, body {{ background: #04060d; color: #e2e4f6; font-family: 'Manrope', sans-serif; margin: 0; padding: 0; height: 100%; overflow: hidden; position: fixed; width: 100%; }}
+        
+        /* ▼ サイバーなドット背景 */
         .app-container {{ 
-            position: absolute; 
-            inset: 0; 
-            overflow-y: auto; 
-            -webkit-overflow-scrolling: touch; 
-            padding: 1.5rem; 
+            position: absolute; inset: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 1.5rem; 
             background-image: 
-                radial-gradient(circle, rgba(129, 236, 255, 0.7) 0.6px, transparent 1px),
-                radial-gradient(circle, rgba(129, 236, 255, 0.15) 1px, transparent 3px),
+                radial-gradient(circle, rgba(129, 236, 255, 0.7) 1.5px, transparent 3px),
+                radial-gradient(circle, rgba(129, 236, 255, 0.15) 6px, transparent 12px),
                 linear-gradient(to bottom right, #020308, #0a0e1a, #020308); 
             background-size: 35px 35px, 35px 35px, 100% 100%;
         }}
+        
         .glass-panel {{ background: rgba(15, 20, 35, 0.6); backdrop-filter: blur(20px); border: 1px solid rgba(129, 236, 255, 0.2); border-radius: 12px; }}
         .neon-text {{ color: #81ecff; text-shadow: 0 0 15px rgba(129,236,255,0.6); font-family: 'Space Grotesk', sans-serif; }}
         .cyber-btn {{ background: linear-gradient(90deg, #81ecff, #00e3fd); color: #004d57; font-weight: 700; border-radius: 6px; }}
         
-        /* 地図の白枠対策 */
+        /* ▼ 地図の白枠対策 */
         .leaflet-container {{ background: #0a0e1a !important; outline: none !important; }}
         .leaflet-container * {{ outline: none !important; -webkit-tap-highlight-color: transparent !important; }}
         
         input[type=range] {{ -webkit-appearance: none; background: rgba(129,236,255,0.2); height: 4px; border-radius: 2px; width: 100%; }}
         input[type=range]::-webkit-slider-thumb {{ -webkit-appearance: none; height: 18px; width: 18px; border-radius: 50%; background: #81ecff; box-shadow: 0 0 10px #81ecff; cursor: pointer; }}
+
+        /* ▼ 太陽の光の層 */
+        #sun-glow-overlay {{
+            transition: background 0.5s ease;
+            mix-blend-mode: overlay;
+            z-index: 400;
+            opacity: 0.8;
+        }}
+
+        /* ▼ スマホ・タブレット用（768px以下）の縮小ルール */
+        @media (max-width: 768px) {{
+            #wind-hud {{
+                transform: scale(0.6);
+                transform-origin: bottom left;
+                margin-left: -10px;
+                margin-bottom: -10px;
+            }}
+            .leaflet-marker-icon > div {{
+                transform: scale(0.7);
+                transform-origin: center center;
+            }}
+        }}
     </style>
 </head>
 <body>
