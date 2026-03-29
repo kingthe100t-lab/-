@@ -90,7 +90,18 @@ html_app = f"""
 
         .glass-panel {{ ... }} /* 既存のコード */
         html, body {{ background: #04060d; color: #e2e4f6; font-family: 'Manrope', sans-serif; margin: 0; padding: 0; height: 100%; overflow: hidden; position: fixed; width: 100%; }}
-        .app-container {{ position: absolute; inset: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 1.5rem; background: radial-gradient(circle at center, #0a0e1a 0%, #020308 100%); }}
+        .app-container {{ 
+            position: absolute; 
+            inset: 0; 
+            overflow-y: auto; 
+            -webkit-overflow-scrolling: touch; 
+            padding: 1.5rem; 
+            background-image: 
+                radial-gradient(circle, rgba(129, 236, 255, 0.7) 1.5px, transparent 3px),
+                radial-gradient(circle, rgba(129, 236, 255, 0.15) 6px, transparent 12px),
+                linear-gradient(to bottom right, #020308, #0a0e1a, #020308); 
+            background-size: 35px 35px, 35px 35px, 100% 100%;
+        }}
         .glass-panel {{ background: rgba(15, 20, 35, 0.6); backdrop-filter: blur(20px); border: 1px solid rgba(129, 236, 255, 0.2); border-radius: 12px; }}
         .neon-text {{ color: #81ecff; text-shadow: 0 0 15px rgba(129,236,255,0.6); font-family: 'Space Grotesk', sans-serif; }}
         .cyber-btn {{ background: linear-gradient(90deg, #81ecff, #00e3fd); color: #004d57; font-weight: 700; border-radius: 6px; }}
