@@ -178,7 +178,8 @@ html_app = f"""
                         </div>
                     </div>
                     
-                    <div class="glass-panel p-4 grid grid-cols-4 gap-2 text-center text-[10px] tracking-tighter">
+                    <div class="glass-panel p-4 grid grid-cols-5 gap-2 text-center text-[10px] tracking-tighter">
+                        <div><div class="text-[#a7aabb]">天気</div><div class="text-base font-bold text-white whitespace-nowrap" id="wCond">--</div></div>
                         <div><div class="text-[#a7aabb]">風向</div><div class="text-lg font-bold text-white" id="wDir">--</div></div>
                         <div><div class="text-[#a7aabb]">風速</div><div class="text-lg font-bold text-white" id="wSpd">--</div></div>
                         <div><div class="text-[#a7aabb]">運用滑走路</div><div class="text-lg font-bold text-[#00e3fd]" id="cRwy">--</div></div>
