@@ -220,10 +220,10 @@ html_app = f"""
             let t = (simHour - 6) / 12, angle = t * Math.PI;
             let isNight = simHour < 6 || simHour >= 18;
             // 影を長く(20px)して、光の方向を強調
-            let dist = isNight ? 0 : 20; 
+            let dist = isNight ? 0 : 15; 
             let dx = -Math.cos(angle) * dist, dy = -Math.sin(angle) * dist;
             let glow = isGlow ? "drop-shadow(0 0 12px #81ecff) " : "";
-            return `${{glow}}drop-shadow(${{dx}}px ${{dy}}px 6px rgba(0,0,0,0.8))`;
+            return `${{glow}}drop-shadow(${{dx}}px ${{dy}}px 10px rgba(0,0,0,0.6))`;
         }}
 
         // ✈️ 飛行機SVG (44px拡大版)
@@ -240,7 +240,7 @@ html_app = f"""
 
         // 📸 カメラピンSVG
         function getCameraSvg(sel) {{
-            let col = sel ? "#81ecff" : "#444756";
+            let col = sel ? "#81ecff" : "#b0b3c2";
             return `
             <div style="width:28px; height:28px; margin-left:-14px; margin-top:-14px;">
                 <svg width="28" height="28" viewBox="0 0 24 24" style="filter:${{getShadowFilter(sel)}}; transition:filter 0.3s ease;">
@@ -286,7 +286,7 @@ html_app = f"""
                 overlay.style.background = "transparent";
             }} else {{
                 let cssAngle = 270 + (t * 180); 
-                overlay.style.background = `linear-gradient(${{cssAngle}}deg, rgba(255, 120, 0, 0.95) 0%, rgba(255, 140, 0, 0.4) 60%, transparent 100%)`;
+                overlay.style.background = `linear-gradient(${{cssAngle}}deg, rgba(255, 245, 200, 0.7) 0%, rgba(255, 230, 150, 0.2) 30%, transparent 100%)`;
             }}
 
             // スポットピンの描画
