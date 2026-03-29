@@ -261,38 +261,39 @@ html_app = f"""
             markersLayer.clearLayers();
             document.getElementById('wind-hud').innerHTML = getSunPositionHud(simHour);
             
-            // ☀️ 画面全体へのオレンジ・グラデーション（太陽の方向に合わせる）
             let t = (simHour - 6) / 12;
             let isNight = simHour < 6 || simHour >= 18;
             let overlay = document.getElementById('sun-glow-overlay');
-            
             if (isNight) {{
                 overlay.style.background = "transparent";
             }} else {{
-                // 太陽の方角（CSSグラデーション用の正しい角度計算）
-                // 朝6時(東/右) = 270deg, 昼12時(南/下) = 360(0)deg, 夕方18時(西/左) = 90deg
                 let cssAngle = 270 + (t * 180); 
-                
-                // 修正版：正しい方角からオレンジ色の光が差し込む
-                overlay.style.background = `linear-gradient(${{cssAngle}}deg, rgba(255, 120, 0, 0.7) 0%, rgba(255, 140, 0, 0.4) 60%, transparent 100%)`;
+                overlay.style.background = `linear-gradient(${{cssAngle}}deg, rgba(255, 120, 0, 0.95) 0%, rgba(255, 140, 0, 0.4) 60%, transparent 100%)`;
             }}
 
+            // スポットピンの描画
             spots.forEach(spot => {{
                 if (filterRwy !== "すべて" && !spot['RWY'].includes(filterRwy)) return;
+                let isSel = (spot['スポット'] === currentSpot['スポット']);
                 let marker = L.marker([spot['緯度'], spot['経度']], {{
-                    icon: L.divIcon({{ html: getCameraSvg(spot['スポット'] === currentSpot['スポット']), className: '' }})
+                    icon: L.divIcon({{ html: getCameraSvg(isSel), className: '' }})
                 }}).bindTooltip(spot['スポット']).addTo(markersLayer);
+                
                 marker.on('click', () => {{ currentSpot=spot; updateUI(); renderMapElements(); }});
             }});
             
-            L.polyline([[currentSpot['緯度'],currentSpot['経度']],[planeLat,planeLng]],{{color:'#81ecff',weight:2,dashArray:'5,10',opacity:0.5}}).addTo(markersLayer);
+            // 視線ライン
+            L.polyline([[currentSpot['緯度'], currentSpot['経度']], [planeLat, planeLng]], {{
+                color: '#81ecff', weight: 2, dashArray: '5, 10', opacity: 0.5
+            }}).addTo(markersLayer);
             
-            L.marker([planeLat,planeLng],{{
-                icon:L.divIcon({{
-                    html:getPlaneSvg(currentRwy==="16"?150:330),
-                    className:'',
-                    iconSize:[44,44],
-                    iconAnchor:[22,22]
+            // 飛行機の描画
+            L.marker([planeLat, planeLng], {{
+                icon: L.divIcon({{
+                    html: getPlaneSvg(currentRwy === "16" ? 156 : 336),
+                    className: '',
+                    iconSize: [44, 44],
+                    iconAnchor: [22, 22]
                 }}),
                 interactive: false
             }}).addTo(markersLayer);
@@ -300,13 +301,14 @@ html_app = f"""
             updateAntPath();
         }}
 
-        // 🛣️ ルートアニメーション (Arrival & Departure)
+        // ルートアニメーション
         function updateAntPath() {{
             if (approachLayer) map.removeLayer(approachLayer); if (departureLayer) map.removeLayer(departureLayer);
             approachLayer = L.polyline.antPath(currentRwy==="16"?path16:path34, {{delay:800,weight:5,color:'#81ecff',pulseColor:'#fff'}}).addTo(map);
             departureLayer = L.polyline.antPath(currentRwy==="16"?depPath16:depPath34, {{delay:1000,weight:5,color:'#ffaa00',pulseColor:'#fff'}}).addTo(map);
         }}
 
+        // 天気・風向きの取得
         async function updateWeather() {{
             try {{
                 const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=33.585&longitude=130.445&hourly=winddirection_10m,windspeed_10m&timezone=Asia%2FTokyo`);
@@ -320,6 +322,7 @@ html_app = f"""
             updateUI(); renderMapElements();
         }}
 
+        // UI情報の更新
         function updateUI() {{
             document.getElementById('spotName').innerText = currentSpot['スポット'];
             document.getElementById('spotDesc').innerText = currentSpot['特徴'];
@@ -329,29 +332,30 @@ html_app = f"""
             document.getElementById('cRwy').innerText = 'RWY '+currentRwy; document.getElementById('cTime').innerText = simDay+' '+simHour+':00';
         }}
 
+        // Gemini 1.5 APIへのリクエスト（エラーキャッチ付き）
         async function requestBriefing() {{
             document.getElementById('ai-briefing').innerText = "STRATEGIZING...";
             const prompt = `福岡空港の「${{currentSpot['スポット']}}」での撮影アドバイス。${{simDay}}${{simHour}}時、風向${{windDir}}度、RWY${{currentRwy}}運用。焦点距離${{currentSpot['焦点距離']}}。短くマニアックに。`;
             
             try {{
-                // APIキーが空っぽの場合は警告を出す
                 if (!apiKey || apiKey === "") {{
                     document.getElementById('ai-briefing').innerHTML = "<span style='color:#ffaa00;'>⚠️ エラー: GEMINI_API_KEY が設定されていません。</span>";
                     return;
                 }}
                 
                 const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${{apiKey}}`, {{
-                const data = await res.json(); 
+                    method: 'POST',
+                    headers: {{ 'Content-Type': 'application/json' }},
+                    body: JSON.stringify({{ contents: [{{ parts: [{{ text: prompt }}] }}] }})
+                }});
                 
-                // API側からエラーが返ってきた場合
+                const data = await res.json(); 
                 if (data.error) {{
                     document.getElementById('ai-briefing').innerHTML = `<span style='color:#ffaa00;'>⚠️ APIエラー: ${{data.error.message}}</span>`;
                 }} else {{
-                    // 正常に取得できた場合
                     document.getElementById('ai-briefing').innerText = data.candidates[0].content.parts[0].text;
                 }}
             }} catch(e) {{ 
-                // 通信自体が失敗した場合
                 document.getElementById('ai-briefing').innerHTML = `<span style='color:#ffaa00;'>⚠️ 通信エラー: ${{e.message}}</span>`; 
             }}
         }}
