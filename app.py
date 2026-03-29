@@ -167,9 +167,9 @@ html_app = f"""
                         <h3 class="text-2xl font-bold mb-4 text-white" id="spotName">--</h3>
                         <p id="spotDesc" class="text-sm leading-relaxed mb-4 text-[#e2e4f6]">--</p>
                         <div class="grid grid-cols-2 gap-4 text-xs">
-                            <div><span class="text-[#a7aabb] block">BEST TIME</span><span id="spotTime">--</span></div>
-                            <div><span class="text-[#a7aabb] block">FOCAL LENGTH</span><span id="spotLens">--</span></div>
-                        </div>
+    <div><span class="text-[#a7aabb] block mb-1">BEST TIME</span><span id="spotTime" class="text-white font-bold text-sm">--</span></div>
+    <div><span class="text-[#a7aabb] block mb-1">FOCAL LENGTH</span><span id="spotLens" class="text-white font-bold text-sm">--</span></div>
+</div>
                     </div>
                     <div class="glass-panel p-6 flex-1 flex flex-col gap-4 min-h-[300px]">
                         <h3 class="text-[#81ecff] font-bold text-sm tracking-widest">TACTICAL BRIEFING</h3>
