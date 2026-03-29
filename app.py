@@ -82,8 +82,8 @@ html_app = f"""
         .app-container {{ 
             position: absolute; inset: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 1.5rem; 
             background-image: 
-                radial-gradient(circle, rgba(129, 236, 255, 0.7) 1.5px, transparent 3px),
-                radial-gradient(circle, rgba(129, 236, 255, 0.15) 6px, transparent 12px),
+                radial-gradient(circle, rgba(129, 236, 255, 0.7) 0.6px, transparent 0.7px),
+                radial-gradient(circle, rgba(129, 236, 255, 0.15) 1px, transparent 2px),
                 linear-gradient(to bottom right, #020308, #0a0e1a, #020308); 
             background-size: 35px 35px, 35px 35px, 100% 100%;
         }}
@@ -290,7 +290,7 @@ html_app = f"""
             // 飛行機の描画
             L.marker([planeLat, planeLng], {{
                 icon: L.divIcon({{
-                    html: getPlaneSvg(currentRwy === "16" ? 156 : 336),
+                    html: getPlaneSvg(currentRwy === "16" ? 150 : 330),
                     className: '',
                     iconSize: [44, 44],
                     iconAnchor: [22, 22]
@@ -343,7 +343,7 @@ html_app = f"""
                     return;
                 }}
                 
-                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${{apiKey}}`, {{
+                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${{apiKey}}`, {{
                     method: 'POST',
                     headers: {{ 'Content-Type': 'application/json' }},
                     body: JSON.stringify({{ contents: [{{ parts: [{{ text: prompt }}] }}] }})
