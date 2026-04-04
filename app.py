@@ -326,13 +326,18 @@ html_app = f"""
             return "☁️曇り";
         }}
 
-        function getShadowFilter(isGlow) {{
-            let t = (simHour - 6) / 12, angle = t * Math.PI;
-            let isNight = simHour < 6 || simHour >= 18;
-            let dist = isNight ? 0 : 15;
-            let dx = -Math.cos(angle) * dist, dy = -Math.sin(angle) * dist;
-            let glow = isGlow ? "drop-shadow(0 0 12px #81ecff) " : "";
-            return `${{glow}}drop-shadow(${{dx}}px ${{dy}}px 10px rgba(0,0,0,0.6))`;
+       function getShadowFilter(isGlow) {{
+            if (isGlow) {{
+                // 選択されているピンは、シアンの光（グロー）だけにする（黒い穴バグ回避）
+                return `drop-shadow(0 0 12px #81ecff)`;
+            }} else {{
+                // 選択されていないピンは、太陽の向きに合わせた通常の影を落とす
+                let t = (simHour - 6) / 12, angle = t * Math.PI;
+                let isNight = simHour < 6 || simHour >= 18;
+                let dist = isNight ? 0 : 15;
+                let dx = -Math.cos(angle) * dist, dy = -Math.sin(angle) * dist;
+                return `drop-shadow(${{dx}}px ${{dy}}px 8px rgba(0,0,0,0.6))`;
+            }}
         }}
 
         function getPlaneSvg(heading) {{
