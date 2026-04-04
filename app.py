@@ -371,7 +371,7 @@ html_app = f"""
                 marker.on('click', () => {{ currentSpot=spot; updateUI(); renderMapElements(); }});
             }});
             L.polyline([[currentSpot['緯度'], currentSpot['経度']], [planeLat, planeLng]], {{ color: '#81ecff', weight: 2, dashArray: '5, 10', opacity: 0.5 }}).addTo(markersLayer);
-            L.marker([planeLat, planeLng], {{ icon: L.divIcon({{ html: getPlaneSvg(currentRwy === "16" ? 156 : 336), className: '', iconSize: [44, 44], iconAnchor: [22, 22] }}), interactive: false }}).addTo(markersLayer);
+            L.marker([planeLat, planeLng], {{ icon: L.divIcon({{ html: getPlaneSvg(currentRwy === "16" ? 150 : 330), className: '', iconSize: [44, 44], iconAnchor: [22, 22] }}), interactive: false }}).addTo(markersLayer);
             if (approachLayer) map.removeLayer(approachLayer); if (departureLayer) map.removeLayer(departureLayer);
             approachLayer = L.polyline.antPath(currentRwy==="16"?path16:path34, {{delay:800,weight:5,color:'#81ecff',pulseColor:'#fff'}}).addTo(map);
             departureLayer = L.polyline.antPath(currentRwy==="16"?depPath16:depPath34, {{delay:1000,weight:5,color:'#ffaa00',pulseColor:'#fff'}}).addTo(map);
