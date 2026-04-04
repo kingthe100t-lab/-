@@ -327,21 +327,37 @@ html_app = f"""
         }}
 
        // 影の計算関数はもう使いません（安全のため空にしておきます）
-        function getShadowFilter(isGlow) {
+        function getShadowFilter(isGlow) {{
             return ""; 
-        }
+        }}
 
         // 飛行機アイコン（filterとtransitionを完全削除）
-        function getPlaneSvg(heading) {
+        function getPlaneSvg(heading) {{
             return `
             <div style="width:44px; height:44px;">
                 <svg width="44" height="44" viewBox="0 0 24 24">
-                    <g transform="rotate(${heading} 12 12)">
+                    <g transform="rotate(${{heading}} 12 12)">
                         <path d="M21 16v-2l-8-5V3.5C13 2.67 12.33 2 11.5 2S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5L21 16z" fill="#81ecff"/>
                     </g>
                 </svg>
             </div>`;
-        }
+        }}
+
+        // カメラアイコン（filterを削除し、安全なbox-shadowで光らせる）
+        function getCameraSvg(sel) {{
+            let col = sel ? "#81ecff" : "#b0b3c2";
+            // 選択時のみ、divの背景に安全なシアンの光（box-shadow）を付与
+            let glowCss = sel ? "box-shadow: 0 0 15px 2px #81ecff; border-radius: 50%; background-color: rgba(10,14,26,0.5);" : "";
+            
+            return `
+            <div style="width:28px; height:28px; margin-left:-14px; margin-top:-14px; ${{glowCss}}">
+                <svg width="28" height="28" viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="11" fill="${{col}}" stroke="#0a0e1a" stroke-width="2"/>
+                    <path d="M8 10l1.5-1.5h5L16 10h1a1 1 0 011 1v5a1 1 0 01-1 1H7a1 1 0 01-1-1v-5a1 1 0 011-1z" fill="#1a1e2d"/>
+                    <circle cx="12" cy="13.5" r="2.5" fill="${{col}}"/>
+                </svg>
+            </div>`;
+        }}
 
         // カメラアイコン（filterを削除し、安全なbox-shadowで光らせる）
         function getCameraSvg(sel) {
