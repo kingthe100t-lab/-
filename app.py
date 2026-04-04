@@ -345,7 +345,7 @@ html_app = f"""
 
         // カメラアイコン（filterを削除し、安全なbox-shadowで光らせる）
         function getCameraSvg(sel) {{
-            let col = sel ? "#81ecff" : "#b0b3c2";
+    let col = sel ? "#81ecff" : "#b0b3c2";
             let glowCss = sel ? "box-shadow: 0 0 15px 2px #81ecff; border-radius: 50%; background-color: rgba(10,14,26,0.5);" : "";
             
             return `
