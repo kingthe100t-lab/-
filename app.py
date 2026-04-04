@@ -395,14 +395,25 @@ html_app = f"""
             const briefingEl = document.getElementById('ai-briefing');
             briefingEl.innerText = "STRATEGIZING...";
             const prompt = `福岡空港の「${{currentSpot['スポット']}}」での撮影アドバイス。${{simDay}}${{simHour}}時、天気は${{weatherCond}}、風向${{windDir}}度、RWY${{currentRwy}}運用。焦点距離${{currentSpot['焦点距離']}}。短くマニアックに。`;
+            
             try {{
                 const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${{apiKey}}`;
-                const res = await fetch(url, {{ method: 'POST', headers: {{ 'Content-Type': 'application/json' }}, body: JSON.stringify({{ contents: [{{ parts: [{{ text: prompt }}] }}] }}) }});
+                const res = await fetch(url, {{ 
+                    method: 'POST', 
+                    headers: {{ 'Content-Type': 'application/json' }}, 
+                    body: JSON.stringify({{ contents: [{{ parts: [{{ text: prompt }}] }}] }}) 
+                }});
                 const data = await res.json();
-                if (data.candidates) briefingEl.innerText = data.candidates[0].content.parts[0].text;
-                else briefingEl.innerText = "応答を取得できませんでした。";
-            } catch(e) {{ briefingEl.innerText = "通信エラーが発生しました。"; }}
-        }
+                
+                if (data.candidates) {{
+                    briefingEl.innerText = data.candidates[0].content.parts[0].text;
+                }} else {{
+                    briefingEl.innerText = "応答を取得できませんでした。";
+                }}
+            }} catch(e) {{ 
+                briefingEl.innerText = "通信エラーが発生しました。"; 
+            }}
+        }}
 
         updateWeather();
     </script>
