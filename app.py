@@ -101,7 +101,6 @@ html_app = f"""
         /* mix-blend-mode: screen で地図に明るさを加算 */
         .leaflet-container {{
             background: #0a101f !important; /* 背景色も少し明るく */
-            mix-blend-mode: screen;
             outline: none !important;
         }}
         .leaflet-container * {{ outline: none !important; -webkit-tap-highlight-color: transparent !important; }}
