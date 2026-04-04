@@ -333,6 +333,12 @@ html_app = f"""
         }}
 
         // 飛行機アイコン（filterとtransitionを完全削除）
+        // 影の計算関数はもう使いません（安全のため空にしておきます）
+        function getShadowFilter(isGlow) {{
+            return ""; 
+        }}
+
+        // 飛行機アイコン（filterとtransitionを完全削除）
         function getPlaneSvg(heading) {{
             return `
             <div style="width:44px; height:44px;">
@@ -358,22 +364,6 @@ html_app = f"""
                 </svg>
             </div>`;
         }}
-
-        // カメラアイコン（filterを削除し、安全なbox-shadowで光らせる）
-        function getCameraSvg(sel) {
-            let col = sel ? "#81ecff" : "#b0b3c2";
-            // 選択時のみ、divの背景に安全なシアンの光（box-shadow）を付与
-            let glowCss = sel ? "box-shadow: 0 0 15px 2px #81ecff; border-radius: 50%; background-color: rgba(10,14,26,0.5);" : "";
-            
-            return `
-            <div style="width:28px; height:28px; margin-left:-14px; margin-top:-14px; ${glowCss}">
-                <svg width="28" height="28" viewBox="0 0 24 24">
-                    <circle cx="12" cy="12" r="11" fill="${col}" stroke="#0a0e1a" stroke-width="2"/>
-                    <path d="M8 10l1.5-1.5h5L16 10h1a1 1 0 011 1v5a1 1 0 01-1 1H7a1 1 0 01-1-1v-5a1 1 0 011-1z" fill="#1a1e2d"/>
-                    <circle cx="12" cy="13.5" r="2.5" fill="${col}"/>
-                </svg>
-            </div>`;
-        }
 
         function getSunPositionHud(h) {{
             let date = new Date(); if (simDay === "明日") date.setDate(date.getDate() + 1);
