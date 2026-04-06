@@ -336,7 +336,7 @@ html_app = f"""
                 let isSel = (spot['スポット'] === currentSpot['スポット']);
                 L.marker([spot['緯度'], spot['経度']], {{ icon: L.divIcon({{ html: getCameraSvg(isSel), className: '' }}) }}).addTo(markersLayer).on('click', (e) => {{ e.originalEvent.stopPropagation(); currentSpot=spot; updateUI(); renderMapElements(); }});
             }});
-            L.marker([planeLat, planeLng], {{ icon: L.divIcon({{ html: getPlaneSvg(currentRwy === "16" ? 156 : 336), className: '', iconAnchor: [22, 22] }}), interactive: false }}).addTo(markersLayer);
+            L.marker([planeLat, planeLng], {{ icon: L.divIcon({{ html: getPlaneSvg(currentRwy === "16" ? 150 : 330), className: '', iconAnchor: [22, 22] }}), interactive: false }}).addTo(markersLayer);
             if (approachLayer) map.removeLayer(approachLayer); if (departureLayer) map.removeLayer(departureLayer);
             approachLayer = L.polyline.antPath(currentRwy==="16"?path16:path34, {{delay:800,weight:5,color:'#81ecff'}}).addTo(map);
             departureLayer = L.polyline.antPath(currentRwy==="16"?depPath16:depPath34, {{delay:1000,weight:5,color:'#ffaa00'}}).addTo(map);
