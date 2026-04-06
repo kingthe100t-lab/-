@@ -289,12 +289,14 @@ html_app = f"""
 
         async function requestBriefing() {{
             const briefingEl = document.getElementById('ai-briefing');
-            briefingEl.innerText = "ANALYZING TACTICS...";
-            // プロンプトをより明確に修正
-            const prompt = `福岡空港の撮影スポット「${{currentSpot['スポット']}}」のアドバイスをください。条件：天気${{weatherCond}}、風向${{windDir}}度、RWY${{currentRwy}}運用、レンズ${{currentSpot['焦點距離']}}。航空マニア向けに短く。`;
+            briefingEl.innerText = "STRATEGIZING WITH 2.5 FLASH...";
+            
+            const prompt = `福岡空港の「${{currentSpot['スポット']}}」での撮影アドバイス。${{simDay}}${{simHour}}時、天気は${{weatherCond}}、風向${{windDir}}度、RWY${{currentRwy}}運用。焦点距離${{currentSpot['焦点距離']}}。短くマニアックに。`;
             
             try {{
-                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${{apiKey}}`;
+                // 2.5 Flash専用のURL（v1betaを使用）
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${{apiKey}}`;
+                
                 const res = await fetch(url, {{
                     method: 'POST',
                     headers: {{ 'Content-Type': 'application/json' }},
@@ -305,12 +307,13 @@ html_app = f"""
                 if (data.candidates && data.candidates[0].content.parts[0].text) {{
                     briefingEl.innerText = data.candidates[0].content.parts[0].text;
                 }} else if (data.error) {{
-                    briefingEl.innerText = "⚠️ APIエラー: " + data.error.message;
+                    // エラーが出た場合はその内容を詳しく表示
+                    briefingEl.innerHTML = `<span style='color:#ffaa00;'>⚠️ AIエラー: ${{data.error.message}}</span>`;
                 }} else {{
-                    briefingEl.innerText = "AIが応答を拒否しました（安全フィルター等）。";
+                    briefingEl.innerText = "応答が空でした。";
                 }}
             }} catch(e) {{
-                briefingEl.innerText = "通信エラー: 接続を確認してください。";
+                briefingEl.innerHTML = `<span style='color:#ffaa00;'>⚠️ 通信エラー: ${{e.message}}</span>`;
             }}
         }}
 
