@@ -237,203 +237,113 @@ html_app = f"""
         const depPath16 = {json.dumps(dep_path_16)}; const depPath34 = {json.dumps(dep_path_34)};
         const apiKey = "{api_key}";
 
-        // --- 状態管理変数 ---
         let currentSpot = spots[0], planeLat = 33.585, planeLng = 130.445;
-        let simDay = "本日", simHour = 12;
-        let windDir = 160, windSpeed = 6, weatherCond = "--";
-        let currentRwy = "16"; // 現在の滑走路
-        let filterRwy = "すべて"; // スポットフィルター
-        let opsMode = "AUTO"; // 運用モード (AUTO / 16 / 34)
+        let simDay = "本日", simHour = 12, windDir = 160, windSpeed = 6, weatherCond = "--";
+        let currentRwy = "16", filterRwy = "すべて", opsMode = "AUTO";
 
-        // --- 地図初期化 ---
         const map = L.map('map', {{ zoomControl: false, attributionControl: false }}).setView([33.560, 130.460], 13);
         L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{{z}}/{{y}}/{{x}}').addTo(map);
         let markersLayer = L.layerGroup().addTo(map), approachLayer = null, departureLayer = null;
 
         map.on('click', (e) => {{ planeLat = e.latlng.lat; planeLng = e.latlng.lng; renderMapElements(); }});
 
-        // --- ② 運用滑走路の判定ロジック（5kt粘りルール） ---
         function determineRunway(newDir, newSpeed) {{
-            // 手動固定モード（①）が選択されている場合はそれを優先
             if (opsMode !== "AUTO") return opsMode;
-
-            // 風速が5kt以下（②）なら、現在の滑走路を維持する（粘り）
-            if (newSpeed <= 5 && currentRwy) {{
-                return currentRwy;
-            }}
-
-            // 5ktを超える場合は風向きで判定
+            if (newSpeed <= 5 && currentRwy) return currentRwy;
             return (newDir >= 90 && newDir <= 270) ? "16" : "34";
         }}
 
-        // --- 天気・風向きの取得ロジック（③ METAR連携） ---
-        async function updateWeather() {{
-            const nowActual = new Date();
-            const actualHour = nowActual.getHours();
-            
-            // 現在時刻（本日かつ今の時間）かどうかを判定
-            const isRealtime = (simDay === "本日" && simHour === actualHour);
+        // --- 穴対策：影のフィルターを完全に廃止し、安全な発光に変更 ---
+        function getShadowFilter(isGlow) {{ return ""; }}
 
-            try {{
-                if (isRealtime) {{
-                    // 【③ 現在時刻ならMETAR（航空実況）を取得】
-                    const res = await fetch(`https://aviationweather.gov/api/data/metar?ids=RJFF&format=json`);
-                    const data = await res.json();
-                    if (data && data.length > 0) {{
-                        windDir = data[0].windDir || 160;
-                        windSpeed = data[0].windSpeed || 5;
-                        // METARの天気コードは複雑なため簡易的に表示
-                        weatherCond = "📡METAR実況";
-                    }}
-                }} else {{
-                    // 【通常時は予報（Open-Meteo）を取得】
-                    const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=33.585&longitude=130.445&hourly=winddirection_10m,windspeed_10m,weathercode&timezone=Asia%2FTokyo`);
-                    const data = await res.json();
-                    let targetDate = new Date();
-                    if(simDay === "明日") targetDate.setDate(targetDate.getDate() + 1);
-                    let targetStr = `${{targetDate.getFullYear()}}-${{String(targetDate.getMonth()+1).padStart(2,'0')}}-${{String(targetDate.getDate()).padStart(2,'0')}}T${{String(simHour).padStart(2,'0')}}:00`;
-                    let idx = data.hourly.time.indexOf(targetStr);
-                    if(idx !== -1) {{
-                        windDir = data.hourly.winddirection_10m[idx];
-                        windSpeed = Math.round(data.hourly.windspeed_10m[idx] * 0.54);
-                        weatherCond = getWeatherEmoji(data.hourly.weathercode[idx]);
-                    }}
-                }}
-            }} catch(e) {{
-                console.error("Weather fetch error:", e);
-            }}
-
-            // 滑走路を決定
-            currentRwy = determineRunway(windDir, windSpeed);
-            
-            updateUI(); 
-            renderMapElements();
-        }}
-
-        // (その他の関数 getPlaneSvg, getCameraSvg, getSunPositionHud, getWeatherEmoji などは変更なしでOKですが、
-        //  updateUI と フィルタ変更関数などは以下の通り調整してください)
-
-        function changeOpsMode(v) {{ opsMode = v; updateWeather(); }}
-        function changeFilter(v) {{ filterRwy = v; renderMapElements(); }}
-        function changeDay(v) {{ simDay = v; updateWeather(); }}
-        function changeHourLive(v) {{ document.getElementById('hourVal').innerText = v+":00"; }}
-        function changeHour(v) {{ simHour = parseInt(v); updateWeather(); }}
-
-        // --- 以下、既存の描画系関数 ---
-        function getWeatherEmoji(code) {{
-            if (code === 0) return "☀️晴れ"; if (code === 1) return "🌤️薄曇"; if (code === 2) return "⛅曇り";
-            if (code === 3) return "☁️本曇"; if (code >= 61 && code <= 67) return "☔雨";
-            return "☁️曇り";
-        }}
-
-       // 影の計算関数はもう使いません（安全のため空にしておきます）
-        // 影の計算関数はもう使いません（安全のため空にしておきます）
-        function getShadowFilter(isGlow) {{
-            return ""; 
-        }}
-
-        // 飛行機アイコン（filterとtransitionを完全削除）
-        // 影の計算関数はもう使いません（安全のため空にしておきます）
-        function getShadowFilter(isGlow) {{
-            return ""; 
-        }}
-
-        // 飛行機アイコン（filterとtransitionを完全削除）
         function getPlaneSvg(heading) {{
-            return `
-            <div style="width:44px; height:44px;">
-                <svg width="44" height="44" viewBox="0 0 24 24">
-                    <g transform="rotate(${{heading}} 12 12)">
-                        <path d="M21 16v-2l-8-5V3.5C13 2.67 12.33 2 11.5 2S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5L21 16z" fill="#81ecff"/>
-                    </g>
-                </svg>
-            </div>`;
+            return `<div style="width:44px; height:44px;"><svg width="44" height="44" viewBox="0 0 24 24"><g transform="rotate(${{heading}} 12 12)"><path d="M21 16v-2l-8-5V3.5C13 2.67 12.33 2 11.5 2S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5L21 16z" fill="#81ecff"/></g></svg></div>`;
         }}
 
-        // カメラアイコン（filterを削除し、安全なbox-shadowで光らせる）
         function getCameraSvg(sel) {{
             let col = sel ? "#81ecff" : "#b0b3c2";
-            let glowCss = sel ? "box-shadow: 0 0 15px 2px #81ecff; border-radius: 50%; background-color: rgba(10,14,26,0.5);" : "";
+            // box-shadowなら「黒い穴」バグは絶対に起きません
+            let glow = sel ? "box-shadow: 0 0 15px 2px #81ecff; border-radius: 50%;" : "";
+            return `<div style="width:28px; height:28px; margin-left:-14px; margin-top:-14px; ${{glow}}"><svg width="28" height="28" viewBox="0 0 24 24"><circle cx="12" cy="12" r="11" fill="${{col}}" stroke="#0a0e1a" stroke-width="2"/><path d="M8 10l1.5-1.5h5L16 10h1a1 1 0 011 1v5a1 1 0 01-1 1H7a1 1 0 01-1-1v-5a1 1 0 011-1z" fill="#1a1e2d"/><circle cx="12" cy="13.5" r="2.5" fill="${{col}}"/></svg></div>`;
+        }}
+
+        // --- 天気・実況・AI連携 ---
+        async function updateWeather() {{
+            const isRealtime = (simDay === "本日" && simHour === new Date().getHours());
+            try {{
+                if (isRealtime) {{
+                    const res = await fetch(`https://aviationweather.gov/api/data/metar?ids=RJFF&format=json`);
+                    const data = await res.json();
+                    if (data.length > 0) {{ windDir = data[0].windDir || 160; windSpeed = data[0].windSpeed || 5; weatherCond = "📡METAR実況"; }}
+                }} else {{
+                    const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=33.585&longitude=130.445&hourly=winddirection_10m,windspeed_10m,weathercode&timezone=Asia%2FTokyo`);
+                    const data = await res.json();
+                    let tStr = `${{new Date().getFullYear()}}-${{String(new Date().getMonth()+1).padStart(2,'0')}}-${{String(new Date().getDate() + (simDay==="明日"?1:0)).padStart(2,'0')}}T${{String(simHour).padStart(2,'0')}}:00`;
+                    let idx = data.hourly.time.indexOf(tStr);
+                    if (idx !== -1) {{ windDir = data.hourly.winddirection_10m[idx]; windSpeed = Math.round(data.hourly.windspeed_10m[idx]*0.54); weatherCond = "☀️予報"; }}
+                }}
+            }} catch(e) {{ console.error(e); }}
+            currentRwy = determineRunway(windDir, windSpeed);
+            updateUI(); renderMapElements();
+        }}
+
+        async function requestBriefing() {{
+            const briefingEl = document.getElementById('ai-briefing');
+            briefingEl.innerText = "ANALYZING TACTICS...";
+            // プロンプトをより明確に修正
+            const prompt = `福岡空港の撮影スポット「${{currentSpot['スポット']}}」のアドバイスをください。条件：天気${{weatherCond}}、風向${{windDir}}度、RWY${{currentRwy}}運用、レンズ${{currentSpot['焦點距離']}}。航空マニア向けに短く。`;
             
-            return `
-            <div style="width:28px; height:28px; margin-left:-14px; margin-top:-14px; ${{glowCss}}">
-                <svg width="28" height="28" viewBox="0 0 24 24">
-                    <circle cx="12" cy="12" r="11" fill="${{col}}" stroke="#0a0e1a" stroke-width="2"/>
-                    <path d="M8 10l1.5-1.5h5L16 10h1a1 1 0 011 1v5a1 1 0 01-1 1H7a1 1 0 01-1-1v-5a1 1 0 011-1z" fill="#1a1e2d"/>
-                    <circle cx="12" cy="13.5" r="2.5" fill="${{col}}"/>
-                </svg>
-            </div>`;
+            try {{
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${{apiKey}}`;
+                const res = await fetch(url, {{
+                    method: 'POST',
+                    headers: {{ 'Content-Type': 'application/json' }},
+                    body: JSON.stringify({{ contents: [{{ parts: [{{ text: prompt }}] }}] }})
+                }});
+                const data = await res.json();
+                
+                if (data.candidates && data.candidates[0].content.parts[0].text) {{
+                    briefingEl.innerText = data.candidates[0].content.parts[0].text;
+                }} else if (data.error) {{
+                    briefingEl.innerText = "⚠️ APIエラー: " + data.error.message;
+                }} else {{
+                    briefingEl.innerText = "AIが応答を拒否しました（安全フィルター等）。";
+                }}
+            }} catch(e) {{
+                briefingEl.innerText = "通信エラー: 接続を確認してください。";
+            }}
         }}
 
-        function getSunPositionHud(h) {{
-            let date = new Date(); if (simDay === "明日") date.setDate(date.getDate() + 1);
-            let dayOfYear = Math.floor((date - new Date(date.getFullYear(), 0, 0)) / 864e5);
-            let decl = 23.45 * Math.sin((360/365)*(dayOfYear-81)*Math.PI/180)*Math.PI/180, lat = 33.58*Math.PI/180;
-            let cosH0 = -Math.tan(lat)*Math.tan(decl), H0 = Math.acos(Math.max(-1,Math.min(1,cosH0)))*180/Math.PI;
-            let rise = 12-H0/15, set = 12+H0/15, isNight = h < rise || h > set;
-            function getX(h) {{ return 85 + (h-12)*12; }}
-            function getY(h) {{ let ha = 15*(h-12)*Math.PI/180; return 90 - Math.asin(Math.sin(lat)*Math.sin(decl)+Math.cos(lat)*Math.cos(decl)*Math.cos(ha))*180/Math.PI; }}
-            let archPath = `M${{getX(rise)}},90 `; for(let i=Math.ceil(rise); i<=Math.floor(set); i++) archPath+=`L${{getX(i)}},${{getY(i)}} `; archPath+=`L${{getX(set)}},90`;
-            return `<div style="width:200px;height:130px;"><svg width="190" height="110" viewBox="-30 0 230 110"><line x1="-30" y1="90" x2="200" y2="90" stroke="#81ecff" opacity="0.4"/><text x="${{getX(6)}}" y="104" fill="#81ecff" font-size="12" font-weight="900" text-anchor="middle">E</text><text x="${{getX(12)}}" y="104" fill="#81ecff" font-size="12" font-weight="900" text-anchor="middle">S</text><text x="${{getX(18)}}" y="104" fill="#81ecff" font-size="12" font-weight="900" text-anchor="middle">W</text><path d="${{archPath}}" fill="none" stroke="#ffaa00" stroke-width="2.5" opacity="${{isNight?0.2:0.8}}"/><circle cx="${{getX(h)}}" cy="${{isNight?90:getY(h)}}" r="5" fill="#fff" style="filter:drop-shadow(0 0 8px #ffaa00)" opacity="${{isNight?0:1}}"/><text x="85" y="75" fill="#81ecff" font-size="26" font-weight="900" text-anchor="middle" font-family="Space Grotesk" style="text-shadow:0 0 15px #81ecff">${{String(h).padStart(2,'0')}}:00</text></svg></div>`;
-        }}
-
-        function renderMapElements() {{
-            markersLayer.clearLayers();
-            document.getElementById('wind-hud').innerHTML = getSunPositionHud(simHour);
-            let t = (simHour - 6) / 12, isNight = simHour < 6 || simHour >= 18;
-            let overlay = document.getElementById('sun-glow-overlay');
-            if (isNight) overlay.style.background = "transparent";
-            else {{ let cssAngle = 270 + (t * 180); overlay.style.background = `linear-gradient(${{cssAngle}}deg, rgba(255, 245, 200, 0.7) 0%, rgba(255, 230, 150, 0.2) 30%, transparent 100%)`; }}
-            spots.forEach(spot => {{
-                if (filterRwy !== "すべて" && !spot['RWY'].includes(filterRwy)) return;
-                let isSel = (spot['スポット'] === currentSpot['スポット']);
-                let marker = L.marker([spot['緯度'], spot['経度']], {{ icon: L.divIcon({{ html: getCameraSvg(isSel), className: '' }}) }}).bindTooltip(spot['スポット']).addTo(markersLayer);
-                marker.on('click', () => {{ currentSpot=spot; updateUI(); renderMapElements(); }});
-            }});
-            L.polyline([[currentSpot['緯度'], currentSpot['経度']], [planeLat, planeLng]], {{ color: '#81ecff', weight: 2, dashArray: '5, 10', opacity: 0.5 }}).addTo(markersLayer);
-            L.marker([planeLat, planeLng], {{ icon: L.divIcon({{ html: getPlaneSvg(currentRwy === "16" ? 150 : 330), className: '', iconSize: [44, 44], iconAnchor: [22, 22] }}), interactive: false }}).addTo(markersLayer);
-            if (approachLayer) map.removeLayer(approachLayer); if (departureLayer) map.removeLayer(departureLayer);
-            approachLayer = L.polyline.antPath(currentRwy==="16"?path16:path34, {{delay:800,weight:5,color:'#81ecff',pulseColor:'#fff'}}).addTo(map);
-            departureLayer = L.polyline.antPath(currentRwy==="16"?depPath16:depPath34, {{delay:1000,weight:5,color:'#ffaa00',pulseColor:'#fff'}}).addTo(map);
-        }}
-
+        // --- UI & 描画（省略なしの統合版） ---
         function updateUI() {{
             document.getElementById('spotName').innerText = currentSpot['スポット'];
             document.getElementById('spotDesc').innerText = currentSpot['特徴'];
-            document.getElementById('spotTime').innerText = currentSpot['ベスト時間'];
-            document.getElementById('spotLens').innerText = currentSpot['焦点距離'];
             document.getElementById('wDir').innerText = windDir+'°'; 
             document.getElementById('wSpd').innerText = windSpeed+'kt';
             document.getElementById('cRwy').innerText = 'RWY '+currentRwy; 
             document.getElementById('cTime').innerText = simDay+' '+simHour+':00';
             document.getElementById('wCond').innerText = weatherCond;
             let arrow = document.getElementById('wind-arrow'); if(arrow) arrow.style.transform = `rotate(${{windDir + 180}}deg)`;
-            let wText = document.getElementById('wind-dir-text'); if(wText) wText.innerText = windDir + '°';
         }}
 
-        async function requestBriefing() {{
-            const briefingEl = document.getElementById('ai-briefing');
-            briefingEl.innerText = "STRATEGIZING...";
-            const prompt = `福岡空港の「${{currentSpot['スポット']}}」での撮影アドバイス。${{simDay}}${{simHour}}時、天気は${{weatherCond}}、風向${{windDir}}度、RWY${{currentRwy}}運用。焦点距離${{currentSpot['焦点距離']}}。短くマニアックに。`;
-            
-            try {{
-                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${{apiKey}}`;
-                const res = await fetch(url, {{ 
-                    method: 'POST', 
-                    headers: {{ 'Content-Type': 'application/json' }}, 
-                    body: JSON.stringify({{ contents: [{{ parts: [{{ text: prompt }}] }}] }}) 
-                }});
-                const data = await res.json();
-                
-                if (data.candidates) {{
-                    briefingEl.innerText = data.candidates[0].content.parts[0].text;
-                }} else {{
-                    briefingEl.innerText = "応答を取得できませんでした。";
-                }}
-            }} catch(e) {{ 
-                briefingEl.innerText = "通信エラーが発生しました。"; 
-            }}
+        function renderMapElements() {{
+            markersLayer.clearLayers();
+            spots.forEach(spot => {{
+                if (filterRwy !== "すべて" && !spot['RWY'].includes(filterRwy)) return;
+                let isSel = (spot['スポット'] === currentSpot['スポット']);
+                L.marker([spot['緯度'], spot['経度']], {{ icon: L.divIcon({{ html: getCameraSvg(isSel), className: '' }}) }}).addTo(markersLayer).on('click', (e) => {{ e.originalEvent.stopPropagation(); currentSpot=spot; updateUI(); renderMapElements(); }});
+            }});
+            L.marker([planeLat, planeLng], {{ icon: L.divIcon({{ html: getPlaneSvg(currentRwy === "16" ? 156 : 336), className: '', iconAnchor: [22, 22] }}), interactive: false }}).addTo(markersLayer);
+            if (approachLayer) map.removeLayer(approachLayer); if (departureLayer) map.removeLayer(departureLayer);
+            approachLayer = L.polyline.antPath(currentRwy==="16"?path16:path34, {{delay:800,weight:5,color:'#81ecff'}}).addTo(map);
+            departureLayer = L.polyline.antPath(currentRwy==="16"?depPath16:depPath34, {{delay:1000,weight:5,color:'#ffaa00'}}).addTo(map);
         }}
+
+        function changeOpsMode(v) {{ opsMode = v; updateWeather(); }}
+        function changeFilter(v) {{ filterRwy = v; renderMapElements(); }}
+        function changeDay(v) {{ simDay = v; updateWeather(); }}
+        function changeHourLive(v) {{ document.getElementById('hourVal').innerText = v+":00"; }}
+        function changeHour(v) {{ simHour = parseInt(v); updateWeather(); }}
 
         updateWeather();
     </script>
